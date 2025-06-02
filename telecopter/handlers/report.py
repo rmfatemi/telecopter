@@ -1,4 +1,4 @@
-from aiogram.types import Message, User as AiogramUser
+from aiogram.types import Message
 from aiogram import Router, F, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -26,8 +26,9 @@ async def _submit_problem_report_logic(message: Message, problem_text: str, stat
     request_id = await db.add_problem_report(message.from_user.id, problem_text_truncated)
 
     await message.answer("✅ Your problem report has been submitted. Thank you!")
-    logger.info("user %s submitted problem report id %s: %s", message.from_user.id, request_id,
-                problem_text_truncated[:50])
+    logger.info(
+        "user %s submitted problem report id %s: %s", message.from_user.id, request_id, problem_text_truncated[:50]
+    )
 
     db_request_row = await db.get_request_by_id(request_id)
     db_user_row = await db.get_user(message.from_user.id)
@@ -35,22 +36,24 @@ async def _submit_problem_report_logic(message: Message, problem_text: str, stat
     if db_request_row and db_user_row:
         from telecopter.handlers.admin import get_admin_report_action_keyboard
         from telecopter.handlers.common import notify_admin_formatted
+
         admin_msg_obj = format_request_for_admin(dict(db_request_row), dict(db_user_row))
         admin_keyboard = get_admin_report_action_keyboard(request_id)
         await notify_admin_formatted(bot_instance, admin_msg_obj, admin_keyboard)
 
     await state.clear()
     from telecopter.handlers.common import _show_main_menu
+
     await _show_main_menu(message, "✅ Report submitted! What can I help you with next?")
 
 
-async def report_command_entry_handler(message: Message, state: FSMContext, bot: Bot,
-                                       is_triggered_by_command: bool = True):
-    if not message.from_user: return
+async def report_command_entry_handler(
+    message: Message, state: FSMContext, bot: Bot, is_triggered_by_command: bool = True
+):
+    if not message.from_user:
+        return
 
-    await message.answer(
-        "📝 Please describe the problem you are experiencing below, or use /cancel."
-    )
+    await message.answer("📝 Please describe the problem you are experiencing below, or use /cancel.")
     await state.set_state(ReportProblemStates.typing_problem)
 
 
@@ -64,7 +67,9 @@ async def problem_report_text_handler(message: Message, state: FSMContext, bot: 
     problem_description = message.text.strip()
     if len(problem_description) < 10:
         await message.answer(
-            "✍️ Your description seems a bit short. Please provide more details to help us understand the issue, or use /cancel.")
+            "✍️ Your description seems a bit short. Please provide more details to help us understand the issue, or use"
+            " /cancel."
+        )
         await state.set_state(ReportProblemStates.typing_problem)
         return
 

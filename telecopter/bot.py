@@ -20,7 +20,7 @@ logger = setup_logger(__name__)
 async def set_bot_commands(bot: Bot):
     user_commands = [
         types.BotCommand(command="start", description="🏁 Start the bot / Show main menu"),
-        types.BotCommand(command="cancel", description="❌ Cancel current operation")
+        types.BotCommand(command="cancel", description="❌ Cancel current operation"),
     ]
     try:
         await bot.set_my_commands(user_commands)
@@ -34,7 +34,9 @@ async def set_bot_commands(bot: Bot):
             types.BotCommand(command="announce_muted", description="👑 Admin: Broadcast silently"),
         ]
         try:
-            await bot.set_my_commands(admin_specific_commands, scope=types.BotCommandScopeChat(chat_id=ADMIN_GROUP_CHAT_ID))
+            await bot.set_my_commands(
+                admin_specific_commands, scope=types.BotCommandScopeChat(chat_id=ADMIN_GROUP_CHAT_ID)
+            )
             logger.info("admin-specific commands set for admin group chat id %s.", ADMIN_GROUP_CHAT_ID)
         except Exception as e:
             logger.error("failed to set admin-specific commands: %s", e)
