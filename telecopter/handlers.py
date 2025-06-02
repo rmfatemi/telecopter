@@ -9,10 +9,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.utils.formatting import Text, Bold, Italic, Code, as_list
 
-from telecopter.config import (
-    ADMIN_CHAT_ID, TMDB_API_KEY, DEFAULT_PAGE_SIZE,
-    MAX_NOTE_LENGTH, MAX_REPORT_LENGTH
-)
+from telecopter.config import ADMIN_CHAT_ID, TMDB_API_KEY, DEFAULT_PAGE_SIZE, MAX_NOTE_LENGTH, MAX_REPORT_LENGTH
 from telecopter.logger import setup_logger
 import telecopter.database as db
 import telecopter.tmdb as tmdb_api
@@ -44,10 +41,7 @@ class AdminInteractionStates(StatesGroup):
 async def _register_user_if_not_exists(aiogram_user: Optional[AiogramUser], chat_id: int):
     if aiogram_user:
         await db.add_or_update_user(
-            user_id=aiogram_user.id,
-            chat_id=chat_id,
-            username=aiogram_user.username,
-            first_name=aiogram_user.first_name
+            user_id=aiogram_user.id, chat_id=chat_id, username=aiogram_user.username, first_name=aiogram_user.first_name
         )
         logger.debug("user %s (chat_id: %s) registration/update processed.", aiogram_user.id, chat_id)
     else:
@@ -68,7 +62,7 @@ async def _notify_admin(bot: Bot, formatted_text_object: Text, keyboard: Optiona
                 chat_id=ADMIN_CHAT_ID,
                 text=formatted_text_object.as_markdown(),
                 parse_mode="MarkdownV2",
-                reply_markup=keyboard
+                reply_markup=keyboard,
             )
         except Exception as e:
             logger.error("failed to send notification to admin %s: %s", ADMIN_CHAT_ID, e)
@@ -79,20 +73,20 @@ async def _notify_admin(bot: Bot, formatted_text_object: Text, keyboard: Optiona
 def get_tmdb_select_keyboard(search_results: list) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for item in search_results:
-        year = f" ({item['year']})" if item.get('year') else ""
+        year = f" ({item['year']})" if item.get("year") else ""
         button_text = f"{item['title']}{year}"
         callback_data = f"tmdb_sel:{item['tmdb_id']}:{item['media_type']}"
         builder.button(text=button_text, callback_data=callback_data)
-    builder.button(text="Cancel Request", callback_data=f"tmdb_sel:action_cancel")
+    builder.button(text="Cancel Request", callback_data="tmdb_sel:action_cancel")
     builder.adjust(1)
     return builder.as_markup()
 
 
 def get_request_confirm_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text="Yes, Request It", callback_data=f"req_conf:yes")
-    builder.button(text="Yes, With a Note", callback_data=f"req_conf:yes_note")
-    builder.button(text="No, Cancel", callback_data=f"req_conf:action_cancel")
+    builder.button(text="Yes, Request It", callback_data="req_conf:yes")
+    builder.button(text="Yes, With a Note", callback_data="req_conf:yes_note")
+    builder.button(text="No, Cancel", callback_data="req_conf:action_cancel")
     builder.adjust(1)
     return builder.as_markup()
 
@@ -100,12 +94,12 @@ def get_request_confirm_keyboard() -> InlineKeyboardMarkup:
 def get_admin_request_action_keyboard(request_id: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     actions_media = {
-        f"approve": "Approve",
-        f"approve_with_note": "Approve w/ Note",
-        f"deny": "Deny",
-        f"deny_with_note": "Deny w/ Note",
-        f"complete": "Mark Completed",
-        f"complete_with_note": "Complete w/ Note",
+        "approve": "Approve",
+        "approve_with_note": "Approve w/ Note",
+        "deny": "Deny",
+        "deny_with_note": "Deny w/ Note",
+        "complete": "Mark Completed",
+        "complete_with_note": "Complete w/ Note",
     }
     for action_key, text in actions_media.items():
         builder.button(text=text, callback_data=f"admin_act:{action_key}:{request_id}")
@@ -116,9 +110,9 @@ def get_admin_request_action_keyboard(request_id: int) -> InlineKeyboardMarkup:
 def get_admin_report_action_keyboard(request_id: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     actions_report = {
-        f"acknowledge": "Acknowledge",
-        f"complete": "Mark Resolved",
-        f"complete_with_note": "Resolve w/ Note",
+        "acknowledge": "Acknowledge",
+        "complete": "Mark Resolved",
+        "complete_with_note": "Resolve w/ Note",
     }
     for action_key, text in actions_report.items():
         builder.button(text=text, callback_data=f"admin_act:{action_key}:{request_id}")
@@ -197,7 +191,8 @@ async def help_command_handler(message: Message, state: FSMContext):
 
 @main_router.message(Command("request"))
 async def request_command_entry_handler(message: Message, command: CommandObject, state: FSMContext):
-    if not message.from_user: return
+    if not message.from_user:
+        return
     await _register_user_if_not_exists(message.from_user, message.chat.id)
 
     if not TMDB_API_KEY:
@@ -217,12 +212,13 @@ async def request_command_entry_handler(message: Message, command: CommandObject
     if not search_results:
         await message.answer(
             f"Sorry, I couldn't find any results for '{query_text}'. Please check spelling or try again.",
-            parse_mode=None)
+            parse_mode=None,
+        )
         return
 
     text_parts = ["I found these results. Please select one:\n"]
     for i, item in enumerate(search_results):
-        year = f" ({item['year']})" if item.get('year') else ""
+        year = f" ({item['year']})" if item.get("year") else ""
         text_parts.append(f"{i + 1}. {item['title']}{year} [{item['media_type']}]")
 
     await message.answer("\n".join(text_parts), reply_markup=get_tmdb_select_keyboard(search_results), parse_mode=None)
@@ -232,7 +228,8 @@ async def request_command_entry_handler(message: Message, command: CommandObject
 @main_router.callback_query(StateFilter(RequestMediaStates.select_media), F.data.startswith("tmdb_sel:"))
 async def select_media_callback_handler(callback_query: CallbackQuery, state: FSMContext):
     await callback_query.answer()
-    if not callback_query.from_user or not callback_query.message: return
+    if not callback_query.from_user or not callback_query.message:
+        return
 
     data_parts = callback_query.data.split(":")
     action = data_parts[1]
@@ -247,8 +244,9 @@ async def select_media_callback_handler(callback_query: CallbackQuery, state: FS
 
     media_details = await tmdb_api.get_media_details(tmdb_id, media_type)
     if not media_details:
-        await callback_query.message.edit_text("Sorry, I couldn't fetch details for your selection. Please try again.",
-                                               reply_markup=None)
+        await callback_query.message.edit_text(
+            "Sorry, I couldn't fetch details for your selection. Please try again.", reply_markup=None
+        )
         await state.clear()
         return
 
@@ -260,13 +258,13 @@ async def select_media_callback_handler(callback_query: CallbackQuery, state: FS
     keyboard = get_request_confirm_keyboard()
 
     try:
-        if media_details.get('poster_url'):
+        if media_details.get("poster_url"):
             await callback_query.bot.send_photo(
                 chat_id=callback_query.message.chat.id,
-                photo=media_details['poster_url'],
+                photo=media_details["poster_url"],
                 caption=caption_text_md,
                 reply_markup=keyboard,
-                parse_mode="MarkdownV2"
+                parse_mode="MarkdownV2",
             )
             await callback_query.message.delete()
         else:
@@ -281,7 +279,8 @@ async def select_media_callback_handler(callback_query: CallbackQuery, state: FS
 @main_router.callback_query(StateFilter(RequestMediaStates.confirm_media), F.data.startswith("req_conf:"))
 async def confirm_media_request_callback_handler(callback_query: CallbackQuery, state: FSMContext):
     await callback_query.answer()
-    if not callback_query.from_user or not callback_query.message: return
+    if not callback_query.from_user or not callback_query.message:
+        return
 
     action = callback_query.data.split(":")[1]
     user_fsm_data = await state.get_data()
@@ -304,26 +303,27 @@ async def confirm_media_request_callback_handler(callback_query: CallbackQuery, 
 
     request_id = await db.add_media_request(
         user_id=callback_query.from_user.id,
-        tmdb_id=selected_media['tmdb_id'],
-        title=selected_media['title'],
-        year=selected_media.get('year'),
-        imdb_id=selected_media.get('imdb_id'),
-        request_type=selected_media['media_type'],
+        tmdb_id=selected_media["tmdb_id"],
+        title=selected_media["title"],
+        year=selected_media.get("year"),
+        imdb_id=selected_media.get("imdb_id"),
+        request_type=selected_media["media_type"],
         user_query=user_fsm_data.get("request_query"),
-        user_note=None
+        user_note=None,
     )
     await callback_query.message.edit_text(
-        "Your request has been submitted to the admin for review. You'll be notified of updates.",
-        reply_markup=None
+        "Your request has been submitted to the admin for review. You'll be notified of updates.", reply_markup=None
     )
 
     db_request_row = await db.get_request_by_id(request_id)
     db_user_row = await db.get_user(callback_query.from_user.id)
     if db_request_row and db_user_row:
         admin_msg_obj = format_request_for_admin(dict(db_request_row), dict(db_user_row))
-        admin_kb = get_admin_request_action_keyboard(request_id) if db_request_row[
-                                                                        'request_type'] != "problem" else get_admin_report_action_keyboard(
-            request_id)
+        admin_kb = (
+            get_admin_request_action_keyboard(request_id)
+            if db_request_row["request_type"] != "problem"
+            else get_admin_report_action_keyboard(request_id)
+        )
         await _notify_admin(callback_query.bot, admin_msg_obj, admin_kb)
 
     await state.clear()
@@ -331,7 +331,8 @@ async def confirm_media_request_callback_handler(callback_query: CallbackQuery, 
 
 @main_router.message(StateFilter(RequestMediaStates.typing_user_note), F.text)
 async def user_note_handler(message: Message, state: FSMContext):
-    if not message.from_user or not message.text: return
+    if not message.from_user or not message.text:
+        return
 
     user_fsm_data = await state.get_data()
     selected_media = user_fsm_data.get("selected_media_details")
@@ -344,13 +345,13 @@ async def user_note_handler(message: Message, state: FSMContext):
     note_text = truncate_text(message.text, MAX_NOTE_LENGTH)
     request_id = await db.add_media_request(
         user_id=message.from_user.id,
-        tmdb_id=selected_media['tmdb_id'],
-        title=selected_media['title'],
-        year=selected_media.get('year'),
-        imdb_id=selected_media.get('imdb_id'),
-        request_type=selected_media['media_type'],
+        tmdb_id=selected_media["tmdb_id"],
+        title=selected_media["title"],
+        year=selected_media.get("year"),
+        imdb_id=selected_media.get("imdb_id"),
+        request_type=selected_media["media_type"],
         user_query=user_fsm_data.get("request_query"),
-        user_note=note_text
+        user_note=note_text,
     )
     await message.answer("Your request with the note has been submitted. You'll be notified of updates.")
 
@@ -358,9 +359,11 @@ async def user_note_handler(message: Message, state: FSMContext):
     db_user_row = await db.get_user(message.from_user.id)
     if db_request_row and db_user_row:
         admin_msg_obj = format_request_for_admin(dict(db_request_row), dict(db_user_row))
-        admin_kb = get_admin_request_action_keyboard(request_id) if db_request_row[
-                                                                        'request_type'] != "problem" else get_admin_report_action_keyboard(
-            request_id)
+        admin_kb = (
+            get_admin_request_action_keyboard(request_id)
+            if db_request_row["request_type"] != "problem"
+            else get_admin_report_action_keyboard(request_id)
+        )
         await _notify_admin(message.bot, admin_msg_obj, admin_kb)
 
     await state.clear()
@@ -368,13 +371,15 @@ async def user_note_handler(message: Message, state: FSMContext):
 
 @main_router.message(Command("report"))
 async def report_command_entry_handler(message: Message, command: CommandObject, state: FSMContext):
-    if not message.from_user: return
+    if not message.from_user:
+        return
     await _register_user_if_not_exists(message.from_user, message.chat.id)
 
     problem_description = command.args
     if not problem_description:
         await message.answer(
-            "Please describe the problem. Usage: `/report <description>`\nOr just send your problem description now.")
+            "Please describe the problem. Usage: `/report <description>`\nOr just send your problem description now."
+        )
         await state.set_state(ReportProblemStates.typing_problem)
         return
 
@@ -383,19 +388,22 @@ async def report_command_entry_handler(message: Message, command: CommandObject,
 
 @main_router.message(StateFilter(ReportProblemStates.typing_problem), F.text)
 async def problem_report_text_handler(message: Message, state: FSMContext):
-    if not message.text: return
+    if not message.text:
+        return
     await _submit_problem_report_logic(message, message.text, state)
 
 
 async def _submit_problem_report_logic(message: Message, problem_text: str, state: FSMContext):
-    if not message.from_user: return
+    if not message.from_user:
+        return
 
     problem_text_truncated = truncate_text(problem_text, MAX_REPORT_LENGTH)
     request_id = await db.add_problem_report(message.from_user.id, problem_text_truncated)
 
     await message.answer("Your problem report has been submitted. Thank you!")
-    logger.info("user %s submitted problem report id %s: %s", message.from_user.id, request_id,
-                problem_text_truncated[:50])
+    logger.info(
+        "user %s submitted problem report id %s: %s", message.from_user.id, request_id, problem_text_truncated[:50]
+    )
 
     db_request_row = await db.get_request_by_id(request_id)
     db_user_row = await db.get_user(message.from_user.id)
@@ -408,25 +416,34 @@ async def _submit_problem_report_logic(message: Message, problem_text: str, stat
 
 @main_router.message(Command("my_requests"))
 async def my_requests_command_handler(message: Message, state: FSMContext):
-    if not message.from_user: return
+    if not message.from_user:
+        return
     await _register_user_if_not_exists(message.from_user, message.chat.id)
-    await _send_my_requests_page_logic(message.from_user.id, 1, message.chat.id, message.bot,
-                                       original_message_id=message.message_id, is_callback=False)
+    await _send_my_requests_page_logic(
+        message.from_user.id, 1, message.chat.id, message.bot, original_message_id=message.message_id, is_callback=False
+    )
 
 
 @main_router.callback_query(F.data.startswith("my_req_page:"))
 async def my_requests_callback_handler(callback_query: CallbackQuery, state: FSMContext):
     await callback_query.answer()
-    if not callback_query.from_user or not callback_query.message: return
+    if not callback_query.from_user or not callback_query.message:
+        return
 
     page = int(callback_query.data.split(":")[1])
-    await _send_my_requests_page_logic(callback_query.from_user.id, page, callback_query.message.chat.id,
-                                       callback_query.bot, original_message_id=callback_query.message.message_id,
-                                       is_callback=True)
+    await _send_my_requests_page_logic(
+        callback_query.from_user.id,
+        page,
+        callback_query.message.chat.id,
+        callback_query.bot,
+        original_message_id=callback_query.message.message_id,
+        is_callback=True,
+    )
 
 
-async def _send_my_requests_page_logic(user_id: int, page: int, chat_id: int, bot: Bot, original_message_id: int,
-                                       is_callback: bool):
+async def _send_my_requests_page_logic(
+    user_id: int, page: int, chat_id: int, bot: Bot, original_message_id: int, is_callback: bool
+):
     requests_rows = await db.get_user_requests(user_id, page, DEFAULT_PAGE_SIZE)
     total_requests = await db.get_user_requests_count(user_id)
     total_pages = (total_requests + DEFAULT_PAGE_SIZE - 1) // DEFAULT_PAGE_SIZE
@@ -444,22 +461,28 @@ async def _send_my_requests_page_logic(user_id: int, page: int, chat_id: int, bo
 
         for req_row in requests_rows:
             req = dict(req_row)
-            title_disp = truncate_text(req['title'], 50)
-            req_type_icon = "🎬" if req['request_type'] in ["movie", "tv"] else "⚠️"
-            date_req = req['created_at'][:10]
+            title_disp = truncate_text(req["title"], 50)
+            req_type_icon = "🎬" if req["request_type"] in ["movie", "tv"] else "⚠️"
+            date_req = req["created_at"][:10]
 
             request_item_elements: list[Union[str, Text, Bold, Italic, Code]] = [
-                Text(req_type_icon, " "), Bold(title_disp), Text("\n"),
-                Text("   Status: "), Italic(req['status']), Text(", Requested: "), Text(date_req), Text("\n")
+                Text(req_type_icon, " "),
+                Bold(title_disp),
+                Text("\n"),
+                Text("   Status: "),
+                Italic(req["status"]),
+                Text(", Requested: "),
+                Text(date_req),
+                Text("\n"),
             ]
-            if req.get('user_note'):
-                request_item_elements.extend([
-                    Text("   Your Note: "), Italic(truncate_text(req['user_note'], 70)), Text("\n")
-                ])
-            if req.get('admin_note'):
-                request_item_elements.extend([
-                    Text("   Admin Note: "), Italic(truncate_text(req['admin_note'], 70)), Text("\n")
-                ])
+            if req.get("user_note"):
+                request_item_elements.extend(
+                    [Text("   Your Note: "), Italic(truncate_text(req["user_note"], 70)), Text("\n")]
+                )
+            if req.get("admin_note"):
+                request_item_elements.extend(
+                    [Text("   Admin Note: "), Italic(truncate_text(req["admin_note"], 70)), Text("\n")]
+                )
             request_item_elements.append(Text("---"))
             page_content.append(as_list(*request_item_elements, sep=""))
             page_content.append(Text("\n"))
@@ -475,23 +498,19 @@ async def _send_my_requests_page_logic(user_id: int, page: int, chat_id: int, bo
                 chat_id=chat_id,
                 message_id=original_message_id,
                 reply_markup=keyboard,
-                parse_mode="MarkdownV2"
+                parse_mode="MarkdownV2",
             )
         except Exception as e:
             logger.debug("failed to edit /my_requests page: %s", e)
     else:
-        await bot.send_message(
-            chat_id=chat_id,
-            text=text_to_send,
-            reply_markup=keyboard,
-            parse_mode="MarkdownV2"
-        )
+        await bot.send_message(chat_id=chat_id, text=text_to_send, reply_markup=keyboard, parse_mode="MarkdownV2")
 
 
 @main_router.callback_query(F.data.startswith("admin_act:"))
 async def admin_action_callback_handler(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
     await callback_query.answer()
-    if not callback_query.from_user or not callback_query.message: return
+    if not callback_query.from_user or not callback_query.message:
+        return
 
     if not _is_admin(callback_query.from_user.id):
         await callback_query.message.reply("This action is admin-only.", parse_mode=None)
@@ -503,8 +522,9 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
         request_id = int(parts[2])
     except (IndexError, ValueError):
         logger.error("invalid admin action callback data: %s", callback_query.data)
-        await callback_query.message.edit_text("Sorry, an unexpected error occurred. Please try again later.",
-                                               reply_markup=None)
+        await callback_query.message.edit_text(
+            "Sorry, an unexpected error occurred. Please try again later.", reply_markup=None
+        )
         return
 
     original_request_row = await db.get_request_by_id(request_id)
@@ -517,12 +537,10 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
 
     if "_with_note" in action_full_key:
         await state.set_state(AdminInteractionStates.typing_admin_note)
-        await state.update_data({
-            "admin_request_id": request_id,
-            "admin_base_action": base_action_key
-        })
+        await state.update_data({"admin_request_id": request_id, "admin_base_action": base_action_key})
         await callback_query.message.edit_text(
-            f"Please send the note for Request ID {request_id} to be {base_action_key}d.", reply_markup=None)
+            f"Please send the note for Request ID {request_id} to be {base_action_key}d.", reply_markup=None
+        )
         return
 
     new_status: Optional[str] = None
@@ -530,19 +548,19 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
 
     if base_action_key == "approve":
         new_status = "approved"
-        user_notification_text_template = "Great news! Your request for \"{title}\" has been approved."
+        user_notification_text_template = 'Great news! Your request for "{title}" has been approved.'
     elif base_action_key == "deny":
         new_status = "denied"
-        user_notification_text_template = "Regarding your request for \"{title}\", the admin has denied it."
+        user_notification_text_template = 'Regarding your request for "{title}", the admin has denied it.'
     elif base_action_key == "complete":
         new_status = "completed"
-        if original_request['request_type'] == "problem":
-            user_notification_text_template = "Update: Your problem report \"{title}\" has been marked as resolved."
+        if original_request["request_type"] == "problem":
+            user_notification_text_template = 'Update: Your problem report "{title}" has been marked as resolved.'
         else:
-            user_notification_text_template = "Update: Your request for \"{title}\" is now completed and available!"
+            user_notification_text_template = 'Update: Your request for "{title}" is now completed and available!'
     elif base_action_key == "acknowledge":
         new_status = "acknowledged"
-        user_notification_text_template = "Update: Your problem report \"{title}\" has been acknowledged by the admin."
+        user_notification_text_template = 'Update: Your problem report "{title}" has been acknowledged by the admin.'
 
     admin_confirm_msg = "Sorry, an unexpected error occurred. Please try again later."
     if new_status and user_notification_text_template:
@@ -553,7 +571,7 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
 
             submitter_chat_id = await db.get_request_submitter_chat_id(request_id)
             if submitter_chat_id:
-                user_msg = user_notification_text_template.format(title=original_request['title'])
+                user_msg = user_notification_text_template.format(title=original_request["title"])
                 try:
                     await bot.send_message(submitter_chat_id, user_msg, parse_mode=None)
                 except Exception as e:
@@ -568,7 +586,8 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
 
 @main_router.message(StateFilter(AdminInteractionStates.typing_admin_note), F.text)
 async def admin_note_handler(message: Message, state: FSMContext, bot: Bot):
-    if not message.from_user or not message.text: return
+    if not message.from_user or not message.text:
+        return
 
     fsm_data = await state.get_data()
     request_id = fsm_data.get("admin_request_id")
@@ -591,15 +610,19 @@ async def admin_note_handler(message: Message, state: FSMContext, bot: Bot):
     user_notification_text_template: Optional[str] = None
 
     if base_action == "approve":
-        new_status = "approved"; user_notification_text_template = "Great news! Your request for \"{title}\" has been approved by the admin."
+        new_status = "approved"
+        user_notification_text_template = 'Great news! Your request for "{title}" has been approved by the admin.'
     elif base_action == "deny":
-        new_status = "denied"; user_notification_text_template = "Regarding your request for \"{title}\", the admin has denied it."
+        new_status = "denied"
+        user_notification_text_template = 'Regarding your request for "{title}", the admin has denied it.'
     elif base_action == "complete":
         new_status = "completed"
-        if original_request['request_type'] == "problem":
-            user_notification_text_template = "Update: Your problem report \"{title}\" has been marked as resolved by the admin."
+        if original_request["request_type"] == "problem":
+            user_notification_text_template = (
+                'Update: Your problem report "{title}" has been marked as resolved by the admin.'
+            )
         else:
-            user_notification_text_template = "Update: Your request for \"{title}\" has been completed by the admin."
+            user_notification_text_template = 'Update: Your request for "{title}" has been completed by the admin.'
 
     admin_confirm_msg = "Sorry, an unexpected error occurred. Please try again later."
     if new_status and user_notification_text_template:
@@ -607,15 +630,18 @@ async def admin_note_handler(message: Message, state: FSMContext, bot: Bot):
         if success:
             full_action_key = f"{base_action}_with_note"
             admin_confirm_msg = f"Request ID {request_id} has been {base_action}d with your note. User notified."
-            await db.log_admin_action(message.from_user.id, full_action_key, request_id=request_id,
-                                      details=admin_note_text)
+            await db.log_admin_action(
+                message.from_user.id, full_action_key, request_id=request_id, details=admin_note_text
+            )
 
             submitter_chat_id = await db.get_request_submitter_chat_id(request_id)
             if submitter_chat_id:
                 user_msg_obj = Text(
-                    user_notification_text_template.format(title=original_request['title']),
+                    user_notification_text_template.format(title=original_request["title"]),
                     "\n\n",  # Explicit newline Text object
-                    Bold("Admin's note:"), " ", Italic(admin_note_text)
+                    Bold("Admin's note:"),
+                    " ",
+                    Italic(admin_note_text),
                 )
                 try:
                     await bot.send_message(submitter_chat_id, text=user_msg_obj.as_markdown(), parse_mode="MarkdownV2")
@@ -647,7 +673,7 @@ async def announce_command_handler(message: Message, command: CommandObject, bot
     formatted_announcement = Text(
         Bold("📢 Announcement from Admin:"),
         "\n\n",  # Explicit newline Text object for spacing
-        Text(announcement_text)  # Treat the announcement text as plain
+        Text(announcement_text),  # Treat the announcement text as plain
     )
 
     chat_ids = await db.get_all_user_chat_ids()
@@ -663,7 +689,7 @@ async def announce_command_handler(message: Message, command: CommandObject, bot
                 chat_id=cid,
                 text=formatted_announcement.as_markdown(),
                 parse_mode="MarkdownV2",
-                disable_notification=is_muted
+                disable_notification=is_muted,
             )
             sent_count += 1
         except Exception as e:
@@ -679,5 +705,5 @@ async def announce_command_handler(message: Message, command: CommandObject, bot
     await db.log_admin_action(
         admin_user_id=message.from_user.id,
         action="announce_muted" if is_muted else "announce",
-        details=f"Sent: {sent_count}, Failed: {failed_count}. Msg: {announcement_text[:100]}"
+        details=f"Sent: {sent_count}, Failed: {failed_count}. Msg: {announcement_text[:100]}",
     )

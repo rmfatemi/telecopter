@@ -1,19 +1,19 @@
 import asyncio
 import aiohttp
+
 from typing import List, Dict, Any, Optional
 
+from telecopter.logger import setup_logger
 from telecopter.config import (
     TMDB_API_KEY,
     TMDB_BASE_URL,
     TMDB_IMAGE_BASE_URL,
     TMDB_REQUEST_DISAMBIGUATION_LIMIT,
 )
-from telecopter.logger import setup_logger
+
 
 logger = setup_logger("tmdb")
 
-TMDB_MEDIA_TYPE_MOVIE = "movie"
-TMDB_MEDIA_TYPE_TV = "tv"
 
 async def _make_tmdb_request(endpoint: str, params: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
     if not TMDB_API_KEY:
@@ -66,10 +66,10 @@ def _format_search_result(result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     poster_path: Optional[str] = result.get("poster_path")
     overview: Optional[str] = result.get("overview")
 
-    if media_type == TMDB_MEDIA_TYPE_MOVIE:
+    if media_type == "movie":
         title = result.get("title") or result.get("original_title")
         year = _extract_year(result.get("release_date"))
-    elif media_type == TMDB_MEDIA_TYPE_TV:
+    elif media_type == "tv":
         title = result.get("name") or result.get("original_name")
         year = _extract_year(result.get("first_air_date"))
     else:
@@ -116,7 +116,7 @@ async def get_media_details(tmdb_id: int, media_type: str) -> Optional[Dict[str,
         logger.warning("tmdb details cannot be fetched without an api key.")
         return None
 
-    if media_type not in [TMDB_MEDIA_TYPE_MOVIE, TMDB_MEDIA_TYPE_TV]:
+    if media_type not in ["movie", "tv"]:
         logger.error("invalid media_type '%s' for get_media_details.", media_type)
         return None
 
@@ -138,13 +138,13 @@ async def get_media_details(tmdb_id: int, media_type: str) -> Optional[Dict[str,
     if external_ids_data:
         imdb_id = external_ids_data.get("imdb_id")
 
-    if not imdb_id and media_type == TMDB_MEDIA_TYPE_MOVIE:
+    if not imdb_id and media_type == "movie":
         imdb_id = data.get("imdb_id")
 
-    if media_type == TMDB_MEDIA_TYPE_MOVIE:
+    if media_type == "movie":
         title = data.get("title") or data.get("original_title")
         year = _extract_year(data.get("release_date"))
-    elif media_type == TMDB_MEDIA_TYPE_TV:
+    elif media_type == "tv":
         title = data.get("name") or data.get("original_name")
         year = _extract_year(data.get("first_air_date"))
 

@@ -1,6 +1,7 @@
 import sys
 import logging
 
+
 def setup_logger(name: str = __name__, level_str: str = "INFO") -> logging.Logger:
     log_level = getattr(logging, level_str.upper(), logging.INFO)
     formatter = logging.Formatter(
