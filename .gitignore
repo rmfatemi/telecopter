@@ -1,4 +1,7 @@
 poetry.lock
+poetry.toml
+identifier.sqlite
+data/
 __pycache__/
 *.py[cod]
 *$py.class
