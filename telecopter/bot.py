@@ -2,39 +2,40 @@ import asyncio
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.client.default import DefaultBotProperties
 
 from telecopter.logger import setup_logger
-from telecopter.handlers import main_router
 from telecopter.database import initialize_database
-from telecopter.config import TELEGRAM_BOT_TOKEN, ADMIN_CHAT_ID
+from telecopter.config import TELEGRAM_BOT_TOKEN, ADMIN_GROUP_CHAT_ID
+
+from telecopter.handlers.admin import admin_router
+from telecopter.handlers.common import common_router
+from telecopter.handlers.requests import requests_router
+from telecopter.handlers.report import report_problem_router
 
 
-logger = setup_logger("bot")
+logger = setup_logger(__name__)
 
 
 async def set_bot_commands(bot: Bot):
-    commands = [
-        types.BotCommand(command="start", description="Start the bot and see welcome message"),
-        types.BotCommand(command="help", description="Show help message with all commands"),
-        types.BotCommand(command="request", description="Request a new movie or TV show"),
-        types.BotCommand(command="my_requests", description="View your past requests and their status"),
-        types.BotCommand(command="report", description="Report a problem"),
-        types.BotCommand(command="cancel", description="Cancel any ongoing operation"),
+    user_commands = [
+        types.BotCommand(command="start", description="🏁 Start the bot / Show main menu"),
+        types.BotCommand(command="cancel", description="❌ Cancel current operation")
     ]
     try:
-        await bot.set_my_commands(commands)
-        logger.info("bot commands set successfully.")
+        await bot.set_my_commands(user_commands)
+        logger.info("user bot commands set successfully.")
     except Exception as e:
-        logger.error("failed to set bot commands: %s", e)
+        logger.error("failed to set user bot commands: %s", e)
 
-    if ADMIN_CHAT_ID:
-        admin_commands = commands + [
-            types.BotCommand(command="announce", description="Admin: Broadcast message"),
-            types.BotCommand(command="announce_muted", description="Admin: Broadcast silently"),
+    if ADMIN_GROUP_CHAT_ID:
+        admin_specific_commands = [
+            types.BotCommand(command="announce", description="👑 Admin: Broadcast message"),
+            types.BotCommand(command="announce_muted", description="👑 Admin: Broadcast silently"),
         ]
         try:
-            await bot.set_my_commands(admin_commands, scope=types.BotCommandScopeChat(chat_id=ADMIN_CHAT_ID))
-            logger.info("admin-specific commands set for admin chat id %s.", ADMIN_CHAT_ID)
+            await bot.set_my_commands(admin_specific_commands, scope=types.BotCommandScopeChat(chat_id=ADMIN_GROUP_CHAT_ID))
+            logger.info("admin-specific commands set for admin group chat id %s.", ADMIN_GROUP_CHAT_ID)
         except Exception as e:
             logger.error("failed to set admin-specific commands: %s", e)
 
@@ -49,9 +50,14 @@ async def main_async():
     logger.info("database initialized.")
 
     storage = MemoryStorage()
-    bot = Bot(token=TELEGRAM_BOT_TOKEN)
+    default_props = DefaultBotProperties(parse_mode="HTML")
+    bot = Bot(token=TELEGRAM_BOT_TOKEN, default=default_props)
     dp = Dispatcher(storage=storage)
-    dp.include_router(main_router)
+
+    dp.include_router(admin_router)
+    dp.include_router(requests_router)
+    dp.include_router(report_problem_router)
+    dp.include_router(common_router)
 
     await set_bot_commands(bot)
 

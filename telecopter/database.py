@@ -1,14 +1,19 @@
 import datetime
 import aiosqlite
 
-from telecopter.config import DATABASE_FILE_PATH, ADMIN_CHAT_ID
+from pathlib import Path
+from typing import Optional
+
 from telecopter.logger import setup_logger
+from telecopter.config import DATABASE_FILE_PATH
 
 
-logger = setup_logger("database")
+logger = setup_logger(__name__)
 
 
 async def initialize_database():
+    db_path = Path(DATABASE_FILE_PATH)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
         await db.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -16,7 +21,6 @@ async def initialize_database():
                 chat_id INTEGER UNIQUE NOT NULL,
                 username TEXT,
                 first_name TEXT,
-                is_admin INTEGER DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 last_active_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
@@ -72,20 +76,18 @@ async def initialize_database():
 
 async def add_or_update_user(user_id: int, chat_id: int, username: str | None, first_name: str | None):
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    is_admin = 1 if chat_id == ADMIN_CHAT_ID else 0
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
         await db.execute(
             """
-            INSERT INTO users (user_id, chat_id, username, first_name, is_admin, created_at, last_active_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO users (user_id, chat_id, username, first_name, created_at, last_active_at)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(user_id) DO UPDATE SET
                 chat_id = excluded.chat_id,
                 username = excluded.username,
                 first_name = excluded.first_name,
-                is_admin = excluded.is_admin,
                 last_active_at = excluded.last_active_at
             """,
-            (user_id, chat_id, username, first_name, is_admin, now, now),
+            (user_id, chat_id, username, first_name, now, now),
         )
         await db.commit()
         logger.debug("user %s (chat_id: %s) added or updated.", user_id, chat_id)
@@ -100,7 +102,7 @@ async def get_user(user_id: int) -> aiosqlite.Row | None:
 
 async def add_media_request(
     user_id: int,
-    tmdb_id: int,
+    tmdb_id: Optional[int],
     title: str,
     year: int | None,
     imdb_id: str | None,
@@ -118,7 +120,7 @@ async def add_media_request(
             (
                 user_id,
                 request_type,
-                "pending_admin",  # Inlined constant
+                "pending_admin",
                 tmdb_id,
                 title,
                 year,
@@ -132,11 +134,12 @@ async def add_media_request(
         await db.commit()
         request_id = cursor.lastrowid
         logger.info(
-            "media request added. request_id: %s, user_id: %s, tmdb_id: %s, title: %s",
+            "media request added. request_id: %s, user_id: %s, tmdb_id: %s, title: %s, type: %s",
             request_id,
             user_id,
-            tmdb_id,
+            tmdb_id if tmdb_id is not None else "none",
             title,
+            request_type,
         )
         return request_id
 
@@ -151,8 +154,8 @@ async def add_problem_report(user_id: int, problem_description: str, user_note: 
             """,
             (
                 user_id,
-                "problem",  # Inlined constant
-                "pending_admin",  # Inlined constant
+                "problem",
+                "pending_admin",
                 problem_description,
                 user_note,
                 now,

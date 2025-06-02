@@ -3,16 +3,16 @@ import aiohttp
 
 from typing import List, Dict, Any, Optional
 
-from telecopter.logger import setup_logger
 from telecopter.config import (
     TMDB_API_KEY,
     TMDB_BASE_URL,
     TMDB_IMAGE_BASE_URL,
     TMDB_REQUEST_DISAMBIGUATION_LIMIT,
 )
+from telecopter.logger import setup_logger
 
 
-logger = setup_logger("tmdb")
+logger = setup_logger(__name__)
 
 
 async def _make_tmdb_request(endpoint: str, params: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
