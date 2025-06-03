@@ -25,17 +25,16 @@ docker-build: ## build the telecopter Docker image.
 
 .PHONY: docker-run
 docker-run: ## run the container named telecopter using the telecopter image.
-	docker volume create telecopter_data && docker run -v telecopter_data:/app/data --name telecopter telecopter
+	docker run -d --name telecopter_container --env-file .env -v "$(pwd)/data:/app/data" telecopter
 
 .PHONY: docker
 docker: clean docker-build docker-run
 
 .PHONY: clean
-clean: ## clean Docker containers, volumes, Python cache, build artifacts and temporary files.
-	@echo "cleaning Docker resources..."
-	-docker rm -f telecopter 2>/dev/null || true
-	-docker volume rm telecopter_data 2>/dev/null || true
-	@echo "cleaning Python cache files..."
+clean: ## clean docker containers, python cache, build artifacts and temporary files.
+	@echo "cleaning docker resources..."
+	-docker rm -f telecopter_container 2>/dev/null || true
+	@echo "cleaning python cache files..."
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 	find . -type f -name "*.pyo" -delete
