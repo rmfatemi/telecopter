@@ -7,10 +7,12 @@ from aiogram.client.default import DefaultBotProperties
 from telecopter.logger import setup_logger
 from telecopter.config import TELEGRAM_BOT_TOKEN
 from telecopter.database import initialize_database
+from telecopter.constants import CMD_START_DESCRIPTION, CMD_CANCEL_DESCRIPTION
 
 from telecopter.handlers.main_menu import main_menu_router
 from telecopter.handlers.admin_panel import admin_panel_router
 from telecopter.handlers.admin_tasks import admin_tasks_router
+from telecopter.handlers.admin_users import admin_users_router
 from telecopter.handlers.media_search import media_search_router
 from telecopter.handlers.core_commands import core_commands_router
 from telecopter.handlers.problem_report import problem_report_router
@@ -26,8 +28,8 @@ logger = setup_logger(__name__)
 
 async def set_bot_commands(bot: Bot):
     user_commands = [
-        types.BotCommand(command="start", description="🏁 start / show main menu"),
-        types.BotCommand(command="cancel", description="❌ cancel current operation (if stuck)"),
+        types.BotCommand(command="start", description=CMD_START_DESCRIPTION),
+        types.BotCommand(command="cancel", description=CMD_CANCEL_DESCRIPTION),
     ]
     try:
         await bot.set_my_commands(user_commands, scope=types.BotCommandScopeAllPrivateChats())
@@ -52,13 +54,14 @@ async def main_async():
 
     dp = Dispatcher(storage=storage)
 
+    dp.include_router(core_commands_router)
     dp.include_router(main_menu_router)
     dp.include_router(admin_panel_router)
     dp.include_router(admin_tasks_router)
-    dp.include_router(media_search_router)
-    dp.include_router(core_commands_router)
+    dp.include_router(admin_users_router)
     dp.include_router(admin_announce_router)
     dp.include_router(admin_moderate_router)
+    dp.include_router(media_search_router)
     dp.include_router(problem_report_router)
     dp.include_router(request_history_router)
     dp.include_router(media_submission_router)

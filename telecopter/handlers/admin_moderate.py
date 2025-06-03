@@ -28,7 +28,7 @@ def get_admin_request_action_keyboard(request_id: int) -> InlineKeyboardMarkup:
     builder.button(text="📝 deny w/ note", callback_data=f"admin_act:deny_with_note:{request_id}")
     builder.button(text="🏁 mark completed", callback_data=f"admin_act:complete:{request_id}")
     builder.button(text="📝 complete w/ note", callback_data=f"admin_act:complete_with_note:{request_id}")
-    builder.button(text=" shelving_decision", callback_data=f"admin_act:close_task:{request_id}")
+    builder.button(text="shelving_decision", callback_data=f"admin_act:close_task:{request_id}")
     builder.adjust(2, 2, 2, 1)
     return builder.as_markup()
 
@@ -38,9 +38,85 @@ def get_admin_report_action_keyboard(request_id: int) -> InlineKeyboardMarkup:
     builder.button(text="👀 acknowledge", callback_data=f"admin_act:acknowledge:{request_id}")
     builder.button(text="🛠️ mark resolved", callback_data=f"admin_act:complete:{request_id}")
     builder.button(text="📝 resolve w/ note", callback_data=f"admin_act:complete_with_note:{request_id}")
-    builder.button(text=" shelving_decision", callback_data=f"admin_act:close_task:{request_id}")
+    builder.button(text="shelving_decision", callback_data=f"admin_act:close_task:{request_id}")
     builder.adjust(1, 1, 1, 1)
     return builder.as_markup()
+
+
+async def _perform_moderation_action_and_notify(
+    bot: Bot,
+    request_id: int,
+    original_request_title: str,
+    original_request_type: str,
+    new_status: str,
+    acting_admin_user_id: int,
+    action_key_for_log: str,
+    admin_note: Optional[str] = None,
+) -> str:
+    user_notification_text_template: Optional[str] = None
+
+    if new_status == "approved":
+        user_notification_text_template = 'great news! 🎉 your request for "{title}" has been approved.'
+        if admin_note:
+            user_notification_text_template = (
+                'great news! 🎉 your request for "{title}" has been approved by the admin.'
+            )
+    elif new_status == "denied":
+        user_notification_text_template = '📑 regarding your request for "{title}", the admin has denied it.'
+    elif new_status == "completed":
+        if original_request_type == "problem":
+            user_notification_text_template = '🛠️ update: your problem report "{title}" has been marked as resolved.'
+            if admin_note:
+                user_notification_text_template = (
+                    '🛠️ update: your problem report "{title}" has been marked as resolved by the admin.'
+                )
+        else:
+            user_notification_text_template = '✅ update: your request for "{title}" is now completed and available!'
+            if admin_note:
+                user_notification_text_template = (
+                    '✅ update: your request for "{title}" has been completed by the admin.'
+                )
+    elif new_status == "acknowledged":
+        user_notification_text_template = '👀 update: your problem report "{title}" has been acknowledged by the admin.'
+
+    admin_confirm_message_core = f"❗unexpected error processing request {request_id}"
+
+    if user_notification_text_template:
+        db_update_successful = await db.update_request_status(request_id, new_status, admin_note=admin_note)
+        if db_update_successful:
+            admin_confirm_message_core = f"request id {request_id} status set to {new_status}"
+            if admin_note:
+                admin_confirm_message_core += " with note"
+            admin_confirm_message_core += ". user notified."
+
+            await db.log_admin_action(
+                acting_admin_user_id, action_key_for_log, request_id=request_id, details=admin_note
+            )
+
+            submitter_chat_id = await db.get_request_submitter_chat_id(request_id)
+            if submitter_chat_id:
+                user_msg_str = user_notification_text_template.format(title=original_request_title)
+                user_msg_obj_parts = [Text(user_msg_str)]
+                if admin_note:
+                    user_msg_obj_parts.extend(["\n\n", Bold("admin's note:"), " ", Italic(admin_note)])
+                user_msg_obj = Text(*user_msg_obj_parts)
+                try:
+                    await bot.send_message(submitter_chat_id, text=user_msg_obj.as_markdown(), parse_mode="MarkdownV2")
+                except Exception as e:
+                    logger.error("failed to send status update to user for request %s: %s", request_id, e)
+                    admin_confirm_message_core += " (user notification failed)"
+            else:
+                admin_confirm_message_core += " (user chat_id not found)"
+        else:
+            admin_confirm_message_core = f"❗failed to update db status for request id {request_id} to {new_status}"
+            if admin_note:
+                admin_confirm_message_core += " with note"
+    else:
+        admin_confirm_message_core = (
+            f"❗unknown new_status '{new_status}' or missing template for request id {request_id}"
+        )
+
+    return admin_confirm_message_core
 
 
 @admin_moderate_router.callback_query(F.data.startswith("admin_act:"))
@@ -123,41 +199,27 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
         return
 
     new_status: Optional[str] = None
-    user_notification_text_template: Optional[str] = None
-
     if base_action_key == "approve":
         new_status = "approved"
-        user_notification_text_template = 'great news! 🎉 your request for "{title}" has been approved.'
     elif base_action_key == "deny":
         new_status = "denied"
-        user_notification_text_template = '📑 regarding your request for "{title}", the admin has denied it.'
     elif base_action_key == "complete":
         new_status = "completed"
-        if original_request["request_type"] == "problem":
-            user_notification_text_template = '🛠️ update: your problem report "{title}" has been marked as resolved.'
-        else:
-            user_notification_text_template = '✅ update: your request for "{title}" is now completed and available!'
     elif base_action_key == "acknowledge":
         new_status = "acknowledged"
-        user_notification_text_template = '👀 update: your problem report "{title}" has been acknowledged by the admin.'
 
-    admin_confirm_log_msg_raw = f"❗unexpected error processing request {request_id}."
-    if new_status and user_notification_text_template:
-        success = await db.update_request_status(request_id, new_status, admin_note=None)
-        if success:
-            admin_confirm_log_msg_raw = f"request id {request_id} status set to {new_status}. user notified."
-            await db.log_admin_action(callback_query.from_user.id, action_full_key, request_id=request_id)
-
-            submitter_chat_id = await db.get_request_submitter_chat_id(request_id)
-            if submitter_chat_id:
-                user_msg_str = user_notification_text_template.format(title=original_request["title"])
-                user_msg_obj = Text(user_msg_str)
-                try:
-                    await bot.send_message(submitter_chat_id, text=user_msg_obj.as_markdown(), parse_mode="MarkdownV2")
-                except Exception as e:
-                    logger.error("failed to send status update to user for request %s: %s", request_id, e)
-        else:
-            admin_confirm_log_msg_raw = f"❗failed to update status for request id {request_id} to {new_status}."
+    admin_confirm_log_msg_raw: str
+    if new_status:
+        admin_confirm_log_msg_raw = await _perform_moderation_action_and_notify(
+            bot=bot,
+            request_id=request_id,
+            original_request_title=original_request["title"],
+            original_request_type=original_request["request_type"],
+            new_status=new_status,
+            acting_admin_user_id=callback_query.from_user.id,
+            action_key_for_log=action_full_key,
+            admin_note=None,
+        )
     else:
         admin_confirm_log_msg_raw = f"❗unknown action '{action_full_key}' for request id {request_id}."
 
@@ -219,49 +281,26 @@ async def admin_note_handler(message: Message, state: FSMContext, bot: Bot):
     original_request = dict(original_request_row)
 
     new_status: Optional[str] = None
-    user_notification_text_template: Optional[str] = None
-
     if base_action == "approve":
         new_status = "approved"
-        user_notification_text_template = 'great news! 🎉 your request for "{title}" has been approved by the admin.'
     elif base_action == "deny":
         new_status = "denied"
-        user_notification_text_template = '📑 regarding your request for "{title}", the admin has denied it.'
     elif base_action == "complete":
         new_status = "completed"
-        if original_request["request_type"] == "problem":
-            user_notification_text_template = (
-                '🛠️ update: your problem report "{title}" has been marked as resolved by the admin.'
-            )
-        else:
-            user_notification_text_template = '✅ update: your request for "{title}" has been completed by the admin.'
 
-    admin_confirm_log_msg_raw = f"❗unexpected error processing request {request_id} with note."
-    if new_status and user_notification_text_template:
-        success = await db.update_request_status(request_id, new_status, admin_note=admin_note_text_raw)
-        if success:
-            full_action_key = f"{base_action}_with_note"
-            admin_confirm_log_msg_raw = f"request id {request_id} has been {base_action}d with note. user notified."
-            await db.log_admin_action(
-                message.from_user.id, full_action_key, request_id=request_id, details=admin_note_text_raw
-            )
-
-            submitter_chat_id = await db.get_request_submitter_chat_id(request_id)
-            if submitter_chat_id:
-                user_msg_part1_str = user_notification_text_template.format(title=original_request["title"])
-                user_msg_obj = Text(
-                    Text(user_msg_part1_str),
-                    "\n\n",
-                    Bold("admin's note:"),
-                    " ",
-                    Italic(admin_note_text_raw),
-                )
-                try:
-                    await bot.send_message(submitter_chat_id, text=user_msg_obj.as_markdown(), parse_mode="MarkdownV2")
-                except Exception as e:
-                    logger.error("failed to send status update with admin note to user for req %s: %s", request_id, e)
-        else:
-            admin_confirm_log_msg_raw = f"❗failed to update request id {request_id} with your note."
+    admin_confirm_log_msg_raw: str
+    full_action_key = f"{base_action}_with_note"
+    if new_status:
+        admin_confirm_log_msg_raw = await _perform_moderation_action_and_notify(
+            bot=bot,
+            request_id=request_id,
+            original_request_title=original_request["title"],
+            original_request_type=original_request["request_type"],
+            new_status=new_status,
+            acting_admin_user_id=message.from_user.id,
+            action_key_for_log=full_action_key,
+            admin_note=admin_note_text_raw,
+        )
     else:
         admin_confirm_log_msg_raw = (
             f"❗error processing admin action '{base_action}' with note for request id {request_id}."

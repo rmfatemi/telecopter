@@ -10,7 +10,13 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardButton, 
 from telecopter.logger import setup_logger
 from telecopter.handlers.core_commands import help_command_logic
 from telecopter.handlers.handler_states import RequestMediaStates
-from telecopter.handlers.common_utils import register_user_if_not_exists
+from telecopter.handlers.common_utils import ensure_user_approved
+from telecopter.constants import (
+    MSG_MAIN_MENU_DEFAULT_WELCOME,
+    MSG_MAIN_MENU_BACK_WELCOME,
+    PROMPT_MAIN_MENU_REQUEST_MEDIA,
+    MSG_MAIN_MENU_MEDIA_SEARCH_UNAVAILABLE,
+)
 
 
 logger = setup_logger(__name__)
@@ -21,11 +27,11 @@ main_menu_router = Router(name="main_menu_router")
 def get_user_main_menu_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.add(
-        InlineKeyboardButton(text="🎬 request media", callback_data="main_menu:request_media"),
-        InlineKeyboardButton(text="📊 my requests", callback_data="main_menu:my_requests"),
-        InlineKeyboardButton(text="⚠️ report a problem", callback_data="main_menu:report_problem"),
-        InlineKeyboardButton(text="❓ help", callback_data="main_menu:show_help"),
-        InlineKeyboardButton(text="❌ cancel action", callback_data="main_menu:cancel_current_action"),
+        InlineKeyboardButton(text="🎬 Request Media", callback_data="main_menu:request_media"),
+        InlineKeyboardButton(text="📊 My Requests", callback_data="main_menu:my_requests"),
+        InlineKeyboardButton(text="⚠️ Report a Problem", callback_data="main_menu:report_problem"),
+        InlineKeyboardButton(text="❓ Help", callback_data="main_menu:show_help"),
+        InlineKeyboardButton(text="❌ Cancel Action", callback_data="main_menu:cancel_current_action"),
     )
     builder.adjust(2, 2, 1)
     return builder.as_markup()
@@ -52,7 +58,7 @@ async def show_main_menu_for_user(
     elif custom_text_str:
         text_to_send = Text(custom_text_str).as_markdown()
     else:
-        default_text_str = f"👋 hello {user_first_name}!\nwhat can i help you with?"
+        default_text_str = MSG_MAIN_MENU_DEFAULT_WELCOME.format(user_first_name=user_first_name)
         text_to_send = Text(default_text_str).as_markdown()
 
     if isinstance(event, Message) and event.chat:
@@ -60,6 +66,7 @@ async def show_main_menu_for_user(
     elif isinstance(event, CallbackQuery) and event.message:
         try:
             await event.message.edit_text(text_to_send, reply_markup=reply_markup, parse_mode=parse_mode_to_use)
+            await event.answer()
         except TelegramBadRequest as e:
             if "message is not modified" in str(e).lower():
                 await event.answer()
@@ -81,19 +88,20 @@ async def main_menu_help_cb(callback_query: CallbackQuery, state: FSMContext, bo
 
 
 @main_menu_router.callback_query(F.data == "main_menu:request_media")
-async def main_menu_request_media_cb(callback_query: CallbackQuery, state: FSMContext):
+async def main_menu_request_media_cb(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
     if not callback_query.message or not callback_query.from_user:
         return
+    if not await ensure_user_approved(callback_query, bot, state):
+        return
     await callback_query.answer()
-    await register_user_if_not_exists(callback_query.from_user, callback_query.message.chat.id)
+
     from telecopter.config import TMDB_API_KEY
 
     if not TMDB_API_KEY:
-        error_text_obj = Text("⚠️ media search is currently unavailable. please try again later.")
-        await callback_query.message.answer(error_text_obj.as_markdown(), parse_mode="MarkdownV2")
+        await callback_query.message.edit_text(MSG_MAIN_MENU_MEDIA_SEARCH_UNAVAILABLE, reply_markup=None)
         return
-    prompt_text_obj = Text("✍️ what movie or tv show are you looking for?\nplease type the name below.")
-    await callback_query.message.answer(prompt_text_obj.as_markdown(), parse_mode="MarkdownV2")
+
+    await callback_query.message.edit_text(PROMPT_MAIN_MENU_REQUEST_MEDIA, reply_markup=None)
     await state.set_state(RequestMediaStates.typing_media_name)
 
 
@@ -103,8 +111,9 @@ async def main_menu_my_requests_cb(callback_query: CallbackQuery, state: FSMCont
 
     if not callback_query.message or not callback_query.from_user:
         return
+    if not await ensure_user_approved(callback_query, bot, state):
+        return
     await callback_query.answer()
-    await register_user_if_not_exists(callback_query.from_user, callback_query.message.chat.id)
     await my_requests_entrypoint(callback_query.message, bot, state, is_callback=True)
 
 
@@ -114,15 +123,17 @@ async def main_menu_report_problem_cb(callback_query: CallbackQuery, state: FSMC
 
     if not callback_query.message or not callback_query.from_user:
         return
+
     await callback_query.answer()
-    await register_user_if_not_exists(callback_query.from_user, callback_query.message.chat.id)
     await report_command_entry_handler(callback_query.message, state, bot, is_triggered_by_command=False)
 
 
 @main_menu_router.callback_query(F.data == "main_menu:show_start_menu_from_my_requests")
-async def handle_back_to_main_menu_cb(callback_query: CallbackQuery, bot: Bot):
+async def handle_back_to_main_menu_cb(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
     await callback_query.answer()
     if not callback_query.from_user or not callback_query.message:
         return
-    welcome_text_str = f"👋 welcome back to the main menu, {callback_query.from_user.first_name}!"
+    if not await ensure_user_approved(callback_query, bot, state):
+        return
+    welcome_text_str = MSG_MAIN_MENU_BACK_WELCOME.format(user_first_name=callback_query.from_user.first_name)
     await show_main_menu_for_user(callback_query, bot, custom_text_str=welcome_text_str)

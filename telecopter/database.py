@@ -2,10 +2,11 @@ import datetime
 import aiosqlite
 
 from pathlib import Path
-from typing import Optional, List  # Added List
+from typing import Optional, List, Dict, Any
 
 from telecopter.logger import setup_logger
-from telecopter.config import DATABASE_FILE_PATH, DEFAULT_PAGE_SIZE  # Import DEFAULT_PAGE_SIZE if used here
+from telecopter.config import DATABASE_FILE_PATH, DEFAULT_PAGE_SIZE
+from telecopter.constants import USER_STATUS_NEW, USER_STATUS_APPROVED
 
 logger = setup_logger(__name__)
 
@@ -14,16 +15,17 @@ async def initialize_database():
     db_path = Path(DATABASE_FILE_PATH)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
-        await db.execute("""
+        await db.execute(f"""
             create table if not exists users (
                 user_id integer primary key,
                 chat_id integer unique not null,
                 username text,
                 first_name text,
+                approval_status text not null default '{USER_STATUS_NEW}',
                 created_at text not null default current_timestamp,
                 last_active_at text not null default current_timestamp
             )
-            """)
+        """)
         logger.info("users table initialized.")
 
         await db.execute("""
@@ -43,7 +45,7 @@ async def initialize_database():
                 updated_at text not null default current_timestamp,
                 foreign key (user_id) references users(user_id)
             )
-            """)
+        """)
         logger.info("requests table initialized.")
 
         await db.execute("""
@@ -53,7 +55,7 @@ async def initialize_database():
             begin
                 update requests set updated_at = current_timestamp where request_id = old.request_id;
             end;
-            """)
+        """)
         logger.info("requests table 'updated_at' trigger initialized.")
 
         await db.execute("""
@@ -67,29 +69,49 @@ async def initialize_database():
                 foreign key (request_id) references requests(request_id),
                 foreign key (admin_user_id) references users(user_id)
             )
-            """)
+        """)
         logger.info("admin_logs table initialized.")
         await db.commit()
     logger.info("database initialization complete.")
 
 
-async def add_or_update_user(user_id: int, chat_id: int, username: str | None, first_name: str | None):
+async def add_or_update_user(
+    user_id: int, chat_id: int, username: str | None, first_name: str | None, is_admin_user: bool = False
+):
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
-        await db.execute(
-            """
-            insert into users (user_id, chat_id, username, first_name, created_at, last_active_at)
-            values (?, ?, ?, ?, ?, ?)
-            on conflict(user_id) do update set
-                chat_id = excluded.chat_id,
-                username = excluded.username,
-                first_name = excluded.first_name,
-                last_active_at = excluded.last_active_at
-            """,
-            (user_id, chat_id, username, first_name, now, now),
-        )
+        async with db.execute("select approval_status from users where user_id = ?", (user_id,)) as cursor:
+            existing_user_row = await cursor.fetchone()
+
+        if existing_user_row:
+            await db.execute(
+                """
+                update users set
+                    chat_id = ?,
+                    username = ?,
+                    first_name = ?,
+                    last_active_at = ?
+                where user_id = ?
+                """,
+                (chat_id, username, first_name, now, user_id),
+            )
+        else:
+            initial_approval_status = USER_STATUS_APPROVED if is_admin_user else USER_STATUS_NEW
+            await db.execute(
+                """
+                insert into users (user_id, chat_id, username, first_name, approval_status, created_at, last_active_at)
+                values (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (user_id, chat_id, username, first_name, initial_approval_status, now, now),
+            )
         await db.commit()
-        logger.debug("user %s (chat_id: %s) added or updated.", user_id, chat_id)
+        logger.debug(
+            "user %s (chat_id: %s) added or updated. admin_flag: %s, new_user: %s",
+            user_id,
+            chat_id,
+            is_admin_user,
+            not existing_user_row,
+        )
 
 
 async def get_user(user_id: int) -> aiosqlite.Row | None:
@@ -99,15 +121,53 @@ async def get_user(user_id: int) -> aiosqlite.Row | None:
             return await cursor.fetchone()
 
 
-async def add_media_request(
+async def get_user_approval_status(user_id: int) -> Optional[str]:
+    async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
+        async with db.execute("select approval_status from users where user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            return row[0] if row else None
+
+
+async def update_user_approval_status(user_id: int, new_status: str) -> bool:
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
+        cursor = await db.execute(
+            "update users set approval_status = ?, last_active_at = ? where user_id = ?",
+            (new_status, now, user_id),
+        )
+        await db.commit()
+        if cursor.rowcount > 0:
+            logger.info("user %s approval_status updated to %s.", user_id, new_status)
+            return True
+        logger.warning("failed to update approval_status for user %s. user not found or no change.", user_id)
+        return False
+
+
+async def get_users_by_status_with_pagination(status: str, page: int, page_size: int) -> Dict[str, Any]:
+    offset = (page - 1) * page_size
+    async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "select * from users where approval_status = ? order by created_at asc limit ? offset ?",
+            (status, page_size, offset),
+        ) as cursor:
+            users = await cursor.fetchall()
+        async with db.execute("select count(*) from users where approval_status = ?", (status,)) as cursor:
+            total_row = await cursor.fetchone()
+            total_count = total_row[0] if total_row else 0
+        return {"users": [dict(u) for u in users], "total_count": total_count}
+
+
+async def add_request(
     user_id: int,
-    tmdb_id: Optional[int],
-    title: str,
-    year: int | None,
-    imdb_id: str | None,
     request_type: str,
-    user_query: str | None,
-    user_note: str | None,
+    title: str,
+    status: str = "pending_admin",
+    tmdb_id: Optional[int] = None,
+    year: Optional[int] = None,
+    imdb_id: Optional[str] = None,
+    user_query: Optional[str] = None,
+    user_note: Optional[str] = None,
 ) -> int:
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
@@ -119,7 +179,7 @@ async def add_media_request(
             (
                 user_id,
                 request_type,
-                "pending_admin",
+                status,
                 tmdb_id,
                 title,
                 year,
@@ -132,50 +192,43 @@ async def add_media_request(
         )
         await db.commit()
         request_id = cursor.lastrowid
-        if request_id is None:  # Should not happen with autoincrement if insert was successful
-            logger.error("failed to retrieve lastrowid after media request insertion.")
-            raise db.DatabaseError("failed to retrieve lastrowid for media request")
+        if request_id is None:
+            logger.error("failed to retrieve lastrowid after request insertion for type %s.", request_type)
+            raise DatabaseError(f"failed to retrieve lastrowid for request type {request_type}")
         logger.info(
-            "media request added. request_id: %s, user_id: %s, tmdb_id: %s, title: %s, type: %s",
+            "%s request added. request_id: %s, user_id: %s, title: %s",
+            request_type,
             request_id,
             user_id,
-            tmdb_id if tmdb_id is not None else "none",
             title,
-            request_type,
         )
         return request_id
+
+
+async def add_media_request(
+    user_id: int,
+    tmdb_id: Optional[int],
+    title: str,
+    year: int | None,
+    imdb_id: str | None,
+    request_type: str,
+    user_query: str | None,
+    user_note: str | None,
+) -> int:
+    return await add_request(
+        user_id=user_id,
+        request_type=request_type,
+        title=title,
+        tmdb_id=tmdb_id,
+        year=year,
+        imdb_id=imdb_id,
+        user_query=user_query,
+        user_note=user_note,
+    )
 
 
 async def add_problem_report(user_id: int, problem_description: str, user_note: str | None = None) -> int:
-    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
-        cursor = await db.execute(
-            """
-            insert into requests (user_id, request_type, status, title, user_note, created_at, updated_at)
-            values (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                user_id,
-                "problem",
-                "pending_admin",
-                problem_description,
-                user_note,
-                now,
-                now,
-            ),
-        )
-        await db.commit()
-        request_id = cursor.lastrowid
-        if request_id is None:
-            logger.error("failed to retrieve lastrowid after problem report insertion.")
-            raise db.DatabaseError("failed to retrieve lastrowid for problem report")
-        logger.info(
-            "problem report added. request_id: %s, user_id: %s, description: %s",
-            request_id,
-            user_id,
-            problem_description[:50],
-        )
-        return request_id
+    return await add_request(user_id=user_id, request_type="problem", title=problem_description, user_note=user_note)
 
 
 async def get_user_requests(user_id: int, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE) -> list[aiosqlite.Row]:
