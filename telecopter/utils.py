@@ -43,18 +43,22 @@ def format_media_details_for_user(details: dict, for_admin_notification: bool = 
 
     media_type_display = "movie" if details.get("media_type") == "movie" else "tv show"
     overview_max_len = 300 if for_admin_notification else 500
-    overview_text = Text(truncate_text(details.get("overview", "no synopsis available."), overview_max_len))
 
-    content_elements: list[Union[str, Text, Bold, Italic, TextLink]] = [
+    overview_content = details.get("overview", "no synopsis available.")
+    overview_text = Text(truncate_text(overview_content, overview_max_len))
+
+    content_elements: list[Union[Text, Bold, Italic, TextLink]] = [  # str removed, as Text() wraps strings
         Bold(f"{title_str}{year_str}"),
         Text(f" ({media_type_display})\n"),
         overview_text,
     ]
 
     links: List[Union[Text, TextLink]] = []
-    tmdb_url = make_tmdb_url(details["tmdb_id"], details["media_type"])
-    if tmdb_url:
-        links.append(TextLink("view on tmdb", url=tmdb_url))
+    # details["tmdb_id"] and details["media_type"] should exist if details is not None
+    if "tmdb_id" in details and "media_type" in details:
+        tmdb_url = make_tmdb_url(details["tmdb_id"], details["media_type"])
+        if tmdb_url:
+            links.append(TextLink("view on tmdb", url=tmdb_url))
 
     imdb_id_val = details.get("imdb_id")
     if imdb_id_val:
@@ -94,7 +98,7 @@ def format_request_for_admin(request_data: dict, user_info: Optional[dict] = Non
     else:
         user_display_elements = [Text("unknown user")]
 
-    message_items: List[Union[str, Text, Bold, Italic, Code, TextLink]] = [
+    message_items: List[Union[Text, Bold, Italic, Code, TextLink]] = [  # str removed
         Bold("new request notification"),
         Text(Bold("request id:"), " ", Code(str(req_id))),
         Text(Bold("user:"), " ", *user_display_elements),
@@ -108,7 +112,8 @@ def format_request_for_admin(request_data: dict, user_info: Optional[dict] = Non
             message_items.append(Text(Bold("year:"), " ", Text(str(year))))
 
         tmdb_id = request_data.get("tmdb_id")
-        if tmdb_id:
+        # Ensure tmdb_id is not None before using it
+        if tmdb_id is not None:  # Added check
             tmdb_url = make_tmdb_url(tmdb_id, req_type)
             if tmdb_url:
                 message_items.append(Text(Bold("tmdb:"), " ", TextLink("link", url=tmdb_url)))
@@ -119,9 +124,12 @@ def format_request_for_admin(request_data: dict, user_info: Optional[dict] = Non
             if imdb_url:
                 message_items.append(Text(Bold("imdb:"), " ", TextLink("link", url=imdb_url)))
 
-        message_items.append(Text(Bold("user query:"), " ", Code(user_query_raw)))
+        if user_query_raw and user_query_raw != "n/a":
+            message_items.append(Text(Bold("user query:"), " ", Code(user_query_raw)))
 
-    message_items.append(Text(Bold("user note:"), " ", Italic(user_note_raw)))
+    if user_note_raw and user_note_raw != "n/a":
+        message_items.append(Text(Bold("user note:"), " ", Italic(user_note_raw)))
+
     message_items.append(Text(Bold("status:"), " ", Text(req_status_raw)))
 
     return as_list(*message_items, sep="\n\n")

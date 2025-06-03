@@ -2,11 +2,10 @@ import datetime
 import aiosqlite
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List # Added List
 
 from telecopter.logger import setup_logger
-from telecopter.config import DATABASE_FILE_PATH
-
+from telecopter.config import DATABASE_FILE_PATH, DEFAULT_PAGE_SIZE # Import DEFAULT_PAGE_SIZE if used here
 
 logger = setup_logger(__name__)
 
@@ -16,57 +15,57 @@ async def initialize_database():
     db_path.parent.mkdir(parents=True, exist_ok=True)
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
         await db.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY,
-                chat_id INTEGER UNIQUE NOT NULL,
-                username TEXT,
-                first_name TEXT,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                last_active_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            create table if not exists users (
+                user_id integer primary key,
+                chat_id integer unique not null,
+                username text,
+                first_name text,
+                created_at text not null default current_timestamp,
+                last_active_at text not null default current_timestamp
             )
             """)
         logger.info("users table initialized.")
 
         await db.execute("""
-            CREATE TABLE IF NOT EXISTS requests (
-                request_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                request_type TEXT NOT NULL,
-                status TEXT NOT NULL,
-                tmdb_id INTEGER,
-                title TEXT NOT NULL,
-                year INTEGER,
-                imdb_id TEXT,
-                user_query TEXT,
-                user_note TEXT,
-                admin_note TEXT,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(user_id)
+            create table if not exists requests (
+                request_id integer primary key autoincrement,
+                user_id integer not null,
+                request_type text not null,
+                status text not null,
+                tmdb_id integer,
+                title text not null,
+                year integer,
+                imdb_id text,
+                user_query text,
+                user_note text,
+                admin_note text,
+                created_at text not null default current_timestamp,
+                updated_at text not null default current_timestamp,
+                foreign key (user_id) references users(user_id)
             )
             """)
         logger.info("requests table initialized.")
 
         await db.execute("""
-            CREATE TRIGGER IF NOT EXISTS update_requests_updated_at
-            AFTER UPDATE ON requests
-            FOR EACH ROW
-            BEGIN
-                UPDATE requests SET updated_at = CURRENT_TIMESTAMP WHERE request_id = OLD.request_id;
-            END;
+            create trigger if not exists update_requests_updated_at
+            after update on requests
+            for each row
+            begin
+                update requests set updated_at = current_timestamp where request_id = old.request_id;
+            end;
             """)
         logger.info("requests table 'updated_at' trigger initialized.")
 
         await db.execute("""
-            CREATE TABLE IF NOT EXISTS admin_logs (
-                log_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                admin_user_id INTEGER NOT NULL,
-                request_id INTEGER,
-                action TEXT NOT NULL,
-                details TEXT,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (request_id) REFERENCES requests(request_id),
-                FOREIGN KEY (admin_user_id) REFERENCES users(user_id)
+            create table if not exists admin_logs (
+                log_id integer primary key autoincrement,
+                admin_user_id integer not null,
+                request_id integer,
+                action text not null,
+                details text,
+                created_at text not null default current_timestamp,
+                foreign key (request_id) references requests(request_id),
+                foreign key (admin_user_id) references users(user_id)
             )
             """)
         logger.info("admin_logs table initialized.")
@@ -79,9 +78,9 @@ async def add_or_update_user(user_id: int, chat_id: int, username: str | None, f
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
         await db.execute(
             """
-            INSERT INTO users (user_id, chat_id, username, first_name, created_at, last_active_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(user_id) DO UPDATE SET
+            insert into users (user_id, chat_id, username, first_name, created_at, last_active_at)
+            values (?, ?, ?, ?, ?, ?)
+            on conflict(user_id) do update set
                 chat_id = excluded.chat_id,
                 username = excluded.username,
                 first_name = excluded.first_name,
@@ -96,7 +95,7 @@ async def add_or_update_user(user_id: int, chat_id: int, username: str | None, f
 async def get_user(user_id: int) -> aiosqlite.Row | None:
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)) as cursor:
+        async with db.execute("select * from users where user_id = ?", (user_id,)) as cursor:
             return await cursor.fetchone()
 
 
@@ -114,8 +113,8 @@ async def add_media_request(
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
         cursor = await db.execute(
             """
-            INSERT INTO requests (user_id, request_type, status, tmdb_id, title, year, imdb_id, user_query, user_note, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            insert into requests (user_id, request_type, status, tmdb_id, title, year, imdb_id, user_query, user_note, created_at, updated_at)
+            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user_id,
@@ -133,6 +132,9 @@ async def add_media_request(
         )
         await db.commit()
         request_id = cursor.lastrowid
+        if request_id is None: # Should not happen with autoincrement if insert was successful
+            logger.error("failed to retrieve lastrowid after media request insertion.")
+            raise db.DatabaseError("failed to retrieve lastrowid for media request")
         logger.info(
             "media request added. request_id: %s, user_id: %s, tmdb_id: %s, title: %s, type: %s",
             request_id,
@@ -149,8 +151,8 @@ async def add_problem_report(user_id: int, problem_description: str, user_note: 
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
         cursor = await db.execute(
             """
-            INSERT INTO requests (user_id, request_type, status, title, user_note, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            insert into requests (user_id, request_type, status, title, user_note, created_at, updated_at)
+            values (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user_id,
@@ -164,6 +166,9 @@ async def add_problem_report(user_id: int, problem_description: str, user_note: 
         )
         await db.commit()
         request_id = cursor.lastrowid
+        if request_id is None:
+            logger.error("failed to retrieve lastrowid after problem report insertion.")
+            raise db.DatabaseError("failed to retrieve lastrowid for problem report")
         logger.info(
             "problem report added. request_id: %s, user_id: %s, description: %s",
             request_id,
@@ -173,16 +178,16 @@ async def add_problem_report(user_id: int, problem_description: str, user_note: 
         return request_id
 
 
-async def get_user_requests(user_id: int, page: int = 1, page_size: int = 5) -> list[aiosqlite.Row]:
+async def get_user_requests(user_id: int, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE) -> list[aiosqlite.Row]:
     offset = (page - 1) * page_size
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             """
-            SELECT * FROM requests
-            WHERE user_id = ?
-            ORDER BY created_at DESC
-            LIMIT ? OFFSET ?
+            select * from requests
+            where user_id = ?
+            order by created_at desc
+            limit ? offset ?
             """,
             (user_id, page_size, offset),
         ) as cursor:
@@ -191,15 +196,15 @@ async def get_user_requests(user_id: int, page: int = 1, page_size: int = 5) -> 
 
 async def get_user_requests_count(user_id: int) -> int:
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
-        async with db.execute("SELECT COUNT(*) FROM requests WHERE user_id = ?", (user_id,)) as cursor:
+        async with db.execute("select count(*) from requests where user_id = ?", (user_id,)) as cursor:
             result = await cursor.fetchone()
-            return result[0] if result else 0
+            return result[0] if result and result[0] is not None else 0
 
 
 async def get_request_by_id(request_id: int) -> aiosqlite.Row | None:
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT * FROM requests WHERE request_id = ?", (request_id,)) as cursor:
+        async with db.execute("select * from requests where request_id = ?", (request_id,)) as cursor:
             return await cursor.fetchone()
 
 
@@ -208,12 +213,12 @@ async def update_request_status(request_id: int, new_status: str, admin_note: st
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
         if admin_note is not None:
             cursor = await db.execute(
-                "UPDATE requests SET status = ?, admin_note = ?, updated_at = ? WHERE request_id = ?",
+                "update requests set status = ?, admin_note = ?, updated_at = ? where request_id = ?",
                 (new_status, admin_note, now, request_id),
             )
         else:
             cursor = await db.execute(
-                "UPDATE requests SET status = ?, updated_at = ? WHERE request_id = ?",
+                "update requests set status = ?, updated_at = ? where request_id = ?",
                 (new_status, now, request_id),
             )
         await db.commit()
@@ -230,8 +235,8 @@ async def log_admin_action(admin_user_id: int, action: str, details: str | None 
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
         await db.execute(
             """
-            INSERT INTO admin_logs (admin_user_id, request_id, action, details, created_at)
-            VALUES (?, ?, ?, ?, ?)
+            insert into admin_logs (admin_user_id, request_id, action, details, created_at)
+            values (?, ?, ?, ?, ?)
             """,
             (admin_user_id, request_id, action, details, now),
         )
@@ -246,7 +251,7 @@ async def log_admin_action(admin_user_id: int, action: str, details: str | None 
 
 async def get_all_user_chat_ids() -> list[int]:
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
-        async with db.execute("SELECT DISTINCT chat_id FROM users") as cursor:
+        async with db.execute("select distinct chat_id from users") as cursor:
             rows = await cursor.fetchall()
             return [row[0] for row in rows]
 
@@ -254,11 +259,39 @@ async def get_all_user_chat_ids() -> list[int]:
 async def get_request_submitter_chat_id(request_id: int) -> int | None:
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
         query = """
-        SELECT u.chat_id
-        FROM requests r
-        JOIN users u ON r.user_id = u.user_id
-        WHERE r.request_id = ?
+        select u.chat_id
+        from requests r
+        join users u on r.user_id = u.user_id
+        where r.request_id = ?
         """
         async with db.execute(query, (request_id,)) as cursor:
             row = await cursor.fetchone()
             return row[0] if row else None
+
+async def get_actionable_admin_requests(page: int, page_size: int = DEFAULT_PAGE_SIZE) -> List[aiosqlite.Row]:
+    offset = (page - 1) * page_size
+    async with aiosqlite.connect(DATABASE_FILE_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        query = """
+            select * from requests
+            where status = 'pending_admin' or status = 'approved'
+            order by
+                case status
+                    when 'pending_admin' then 1
+                    when 'approved' then 2
+                    else 3
+                end,
+                created_at asc
+            limit ? offset ?
+        """
+        cursor = await conn.execute(query, (page_size, offset))
+        return await cursor.fetchall()
+
+async def get_actionable_admin_requests_count() -> int:
+    async with aiosqlite.connect(DATABASE_FILE_PATH) as conn:
+        cursor = await conn.execute("select count(*) from requests where status = 'pending_admin' or status = 'approved'")
+        result = await cursor.fetchone()
+        return result[0] if result and result[0] is not None else 0
+
+class DatabaseError(Exception):
+    pass
