@@ -2,10 +2,10 @@ import datetime
 import aiosqlite
 
 from pathlib import Path
-from typing import Optional, List # Added List
+from typing import Optional, List  # Added List
 
 from telecopter.logger import setup_logger
-from telecopter.config import DATABASE_FILE_PATH, DEFAULT_PAGE_SIZE # Import DEFAULT_PAGE_SIZE if used here
+from telecopter.config import DATABASE_FILE_PATH, DEFAULT_PAGE_SIZE  # Import DEFAULT_PAGE_SIZE if used here
 
 logger = setup_logger(__name__)
 
@@ -132,7 +132,7 @@ async def add_media_request(
         )
         await db.commit()
         request_id = cursor.lastrowid
-        if request_id is None: # Should not happen with autoincrement if insert was successful
+        if request_id is None:  # Should not happen with autoincrement if insert was successful
             logger.error("failed to retrieve lastrowid after media request insertion.")
             raise db.DatabaseError("failed to retrieve lastrowid for media request")
         logger.info(
@@ -268,6 +268,7 @@ async def get_request_submitter_chat_id(request_id: int) -> int | None:
             row = await cursor.fetchone()
             return row[0] if row else None
 
+
 async def get_actionable_admin_requests(page: int, page_size: int = DEFAULT_PAGE_SIZE) -> List[aiosqlite.Row]:
     offset = (page - 1) * page_size
     async with aiosqlite.connect(DATABASE_FILE_PATH) as conn:
@@ -287,11 +288,15 @@ async def get_actionable_admin_requests(page: int, page_size: int = DEFAULT_PAGE
         cursor = await conn.execute(query, (page_size, offset))
         return await cursor.fetchall()
 
+
 async def get_actionable_admin_requests_count() -> int:
     async with aiosqlite.connect(DATABASE_FILE_PATH) as conn:
-        cursor = await conn.execute("select count(*) from requests where status = 'pending_admin' or status = 'approved'")
+        cursor = await conn.execute(
+            "select count(*) from requests where status = 'pending_admin' or status = 'approved'"
+        )
         result = await cursor.fetchone()
         return result[0] if result and result[0] is not None else 0
+
 
 class DatabaseError(Exception):
     pass

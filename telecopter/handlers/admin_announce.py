@@ -28,31 +28,49 @@ ANNOUNCE_TYPE_KEYBOARD = (
     .as_markup()
 )
 
+
 async def ask_announcement_type(message_event: Message, state: FSMContext, bot: Bot):
     await state.set_state(AdminAnnounceStates.choosing_type)
     text_obj = Text("📢 choose announcement type:")
     try:
-        if hasattr(message_event, 'edit_text') and message_event.message_id:
-            await message_event.edit_text(text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=ANNOUNCE_TYPE_KEYBOARD)
+        if hasattr(message_event, "edit_text") and message_event.message_id:
+            await message_event.edit_text(
+                text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=ANNOUNCE_TYPE_KEYBOARD
+            )
         elif message_event.chat:
-             await bot.send_message(message_event.chat.id, text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=ANNOUNCE_TYPE_KEYBOARD)
+            await bot.send_message(
+                message_event.chat.id,
+                text_obj.as_markdown(),
+                parse_mode="MarkdownV2",
+                reply_markup=ANNOUNCE_TYPE_KEYBOARD,
+            )
     except Exception as e:
         logger.error(f"error in ask_announcement_type: {e}")
         if message_event.chat:
-             await bot.send_message(message_event.chat.id, text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=ANNOUNCE_TYPE_KEYBOARD)
+            await bot.send_message(
+                message_event.chat.id,
+                text_obj.as_markdown(),
+                parse_mode="MarkdownV2",
+                reply_markup=ANNOUNCE_TYPE_KEYBOARD,
+            )
 
 
-@admin_announce_router.callback_query(StateFilter(AdminAnnounceStates.choosing_type), F.data.startswith("announce_type:"))
+@admin_announce_router.callback_query(
+    StateFilter(AdminAnnounceStates.choosing_type), F.data.startswith("announce_type:")
+)
 async def process_announcement_type_cb(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
     action = callback_query.data.split(":")[1]
     await callback_query.answer()
 
     if action == "cancel_to_panel":
         from .admin_panel import show_admin_panel
+
         await state.clear()
         if callback_query.message:
             try:
-                await callback_query.message.edit_text(Text("announcement cancelled.").as_markdown(), parse_mode="MarkdownV2")
+                await callback_query.message.edit_text(
+                    Text("announcement cancelled.").as_markdown(), parse_mode="MarkdownV2"
+                )
             except Exception:
                 logger.debug("could not edit message for announcement cancel")
         await show_admin_panel(callback_query, bot)
@@ -62,10 +80,14 @@ async def process_announcement_type_cb(callback_query: CallbackQuery, state: FSM
     await state.update_data(is_muted=is_muted)
     await state.set_state(AdminAnnounceStates.typing_message)
 
-    prompt_text_str = f"✍️ please type your {'muted' if is_muted else 'unmuted'} announcement message below.\nyou can cancel from the admin panel if you return via /start."
+    prompt_text_str = (
+        f"✍️ please type your {'muted' if is_muted else 'unmuted'} announcement message below.\nyou can cancel from the"
+        " admin panel if you return via /start."
+    )
     prompt_text_obj = Text(prompt_text_str)
     if callback_query.message:
         await callback_query.message.edit_text(prompt_text_obj.as_markdown(), parse_mode="MarkdownV2")
+
 
 @admin_announce_router.message(StateFilter(AdminAnnounceStates.typing_message), F.text)
 async def process_announcement_message_text(message: Message, state: FSMContext, bot: Bot):

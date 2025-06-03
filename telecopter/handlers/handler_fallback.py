@@ -35,9 +35,11 @@ async def unhandled_text_message_handler(message: Message, state: FSMContext, bo
     )
     await show_main_menu_for_user(message, bot, custom_text_str=response_text_str)
 
+
 @handler_fallback_router.message(StateFilter(None))
 async def unhandled_non_text_message_handler(message: Message, state: FSMContext, bot: Bot):
     from .main_menu import show_main_menu_for_user
+
     logger.info(
         "unhandled non-text message (type: %s) from user %s",
         message.content_type,

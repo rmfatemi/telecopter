@@ -46,15 +46,21 @@ def get_admin_report_action_keyboard(request_id: int) -> InlineKeyboardMarkup:
 @admin_moderate_router.callback_query(F.data.startswith("admin_act:"))
 async def admin_action_callback_handler(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
     await callback_query.answer()
-    if not callback_query.from_user or not callback_query.message or not (
-            callback_query.message.text or callback_query.message.caption):
+    if (
+        not callback_query.from_user
+        or not callback_query.message
+        or not (callback_query.message.text or callback_query.message.caption)
+    ):
         logger.warning("admin_action_callback_handler: message text/caption is missing.")
         return
 
     if not await is_admin(callback_query.from_user.id, bot):
         if callback_query.message.chat:
-            await bot.send_message(callback_query.message.chat.id, Text("⛔ this action is admin-only.").as_markdown(),
-                                   parse_mode="MarkdownV2")
+            await bot.send_message(
+                callback_query.message.chat.id,
+                Text("⛔ this action is admin-only.").as_markdown(),
+                parse_mode="MarkdownV2",
+            )
         return
 
     action_full_key: str
@@ -67,16 +73,18 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
         logger.error("invalid admin action callback data: %s", callback_query.data)
         if callback_query.message:
             error_text_obj = Text("❗sorry, an unexpected error occurred. please try again later.")
-            await callback_query.message.edit_text(error_text_obj.as_markdown(), parse_mode="MarkdownV2",
-                                                   reply_markup=None)
+            await callback_query.message.edit_text(
+                error_text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None
+            )
         return
 
     if action_full_key == "close_task":
         try:
             if callback_query.message:
                 text_obj = Text(f"task id {request_id} closed in this view.")
-                await callback_query.message.edit_text(text_obj.as_markdown(), parse_mode="MarkdownV2",
-                                                       reply_markup=None)
+                await callback_query.message.edit_text(
+                    text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None
+                )
         except Exception as e:
             logger.debug(f"failed to edit message for close_task: {e}")
         return
@@ -85,8 +93,9 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
     if not original_request_row:
         if callback_query.message:
             error_text_obj = Text(f"❗error: request id {request_id} not found.")
-            await callback_query.message.edit_text(error_text_obj.as_markdown(), parse_mode="MarkdownV2",
-                                                   reply_markup=None)
+            await callback_query.message.edit_text(
+                error_text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None
+            )
         return
     original_request = dict(original_request_row)
     original_message_content = callback_query.message.text or callback_query.message.caption
@@ -100,13 +109,17 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
             admin_base_action=base_action_key,
             original_admin_message_id=callback_query.message.message_id,
             original_admin_chat_id=callback_query.message.chat.id,
-            original_message_text=original_message_content
+            original_message_text=original_message_content,
         )
-        prompt_text_str = f"✍️ please send the note for request id {request_id} to be {base_action_key}d.\nyou can cancel from the admin panel if you return via /start."
+        prompt_text_str = (
+            f"✍️ please send the note for request id {request_id} to be {base_action_key}d.\nyou can cancel from the"
+            " admin panel if you return via /start."
+        )
         prompt_text_obj = Text(prompt_text_str)
         if callback_query.message:
-            await callback_query.message.edit_text(prompt_text_obj.as_markdown(), parse_mode="MarkdownV2",
-                                                   reply_markup=None)
+            await callback_query.message.edit_text(
+                prompt_text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None
+            )
         return
 
     new_status: Optional[str] = None
@@ -156,7 +169,8 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
             TextLink(callback_query.from_user.full_name, url=f"tg://user?id={callback_query.from_user.id}"),
             Text(": "),
             Text(action_full_key.replace("_", " ")),
-            Text(f"\n"), Text(admin_confirm_log_msg_raw),
+            Text("\n"),
+            Text(admin_confirm_log_msg_raw),
         )
         try:
             await callback_query.message.edit_text(
@@ -166,8 +180,9 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
             logger.debug("failed to edit admin message: %s. sending new.", e)
             if callback_query.message.chat:
                 fallback_text_obj = Text(admin_confirm_log_msg_raw)
-                await bot.send_message(callback_query.message.chat.id, fallback_text_obj.as_markdown(),
-                                       parse_mode="MarkdownV2")
+                await bot.send_message(
+                    callback_query.message.chat.id, fallback_text_obj.as_markdown(), parse_mode="MarkdownV2"
+                )
 
 
 @admin_moderate_router.message(StateFilter(AdminInteractionStates.typing_admin_note), F.text)
@@ -236,7 +251,10 @@ async def admin_note_handler(message: Message, state: FSMContext, bot: Bot):
                 user_msg_part1_str = user_notification_text_template.format(title=original_request["title"])
                 user_msg_obj = Text(
                     Text(user_msg_part1_str),
-                    "\n\n", Bold("admin's note:"), " ", Italic(admin_note_text_raw),
+                    "\n\n",
+                    Bold("admin's note:"),
+                    " ",
+                    Italic(admin_note_text_raw),
                 )
                 try:
                     await bot.send_message(submitter_chat_id, text=user_msg_obj.as_markdown(), parse_mode="MarkdownV2")
@@ -258,8 +276,10 @@ async def admin_note_handler(message: Message, state: FSMContext, bot: Bot):
             "\n\n---\n",
             Bold("action taken by "),
             TextLink(message.from_user.full_name, url=f"tg://user?id={message.from_user.id}"),
-            Text(f": {base_action} with note\n"), Italic(admin_note_text_raw),
-            Text(f"\n"), Text(admin_confirm_log_msg_raw.split('.')[0] + "."),
+            Text(f": {base_action} with note\n"),
+            Italic(admin_note_text_raw),
+            Text("\n"),
+            Text(admin_confirm_log_msg_raw.split(".")[0] + "."),
         )
         try:
             await bot.edit_message_text(
@@ -272,5 +292,6 @@ async def admin_note_handler(message: Message, state: FSMContext, bot: Bot):
         except Exception as e:
             logger.debug("failed to update original admin message after note: %s", e)
             fallback_text_obj = Text(
-                f"update for request id {request_id}: {admin_confirm_log_msg_raw} (note: {admin_note_text_raw})")
+                f"update for request id {request_id}: {admin_confirm_log_msg_raw} (note: {admin_note_text_raw})"
+            )
             await bot.send_message(original_admin_chat_id, fallback_text_obj.as_markdown(), parse_mode="MarkdownV2")

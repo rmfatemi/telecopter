@@ -43,7 +43,9 @@ async def _submit_problem_report_logic(message: Message, problem_text: str, stat
         await notify_admin_formatted(bot_instance, admin_msg_obj, admin_keyboard)
 
     await state.clear()
-    await show_main_menu_for_user(message, bot_instance, custom_text_str="✅ report submitted! what can i help you with next?")
+    await show_main_menu_for_user(
+        message, bot_instance, custom_text_str="✅ report submitted! what can i help you with next?"
+    )
 
 
 async def report_command_entry_handler(
@@ -51,9 +53,12 @@ async def report_command_entry_handler(
 ):
     if not message.from_user:
         return
-    prompt_text_obj = Text("📝 please describe the problem you are experiencing below, or use the cancel button in the menu.")
+    prompt_text_obj = Text(
+        "📝 please describe the problem you are experiencing below, or use the cancel button in the menu."
+    )
     await message.answer(prompt_text_obj.as_markdown(), parse_mode="MarkdownV2")
     await state.set_state(ReportProblemStates.typing_problem)
+
 
 @problem_report_router.message(StateFilter(ReportProblemStates.typing_problem), F.text)
 async def problem_report_text_handler(message: Message, state: FSMContext, bot: Bot):
@@ -65,7 +70,10 @@ async def problem_report_text_handler(message: Message, state: FSMContext, bot: 
 
     problem_description = message.text.strip()
     if len(problem_description) < 10:
-        reply_text_obj = Text("✍️ your description seems a bit short. please provide more details to help us understand the issue, or use the cancel button in the menu.")
+        reply_text_obj = Text(
+            "✍️ your description seems a bit short. please provide more details to help us understand the issue, or use"
+            " the cancel button in the menu."
+        )
         await message.answer(reply_text_obj.as_markdown(), parse_mode="MarkdownV2")
         await state.set_state(ReportProblemStates.typing_problem)
         return

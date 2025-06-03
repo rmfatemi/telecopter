@@ -30,22 +30,25 @@ def get_my_requests_pagination_keyboard(page: int, total_pages: int) -> Optional
     return None
 
 
-async def my_requests_entrypoint(
-        message: Message, bot: Bot, state: FSMContext, is_callback: bool = False
-):
+async def my_requests_entrypoint(message: Message, bot: Bot, state: FSMContext, is_callback: bool = False):
     if not message.from_user:
         return
     await _send_my_requests_page_logic(
-        message.from_user.id, 1, message.chat.id, bot,
+        message.from_user.id,
+        1,
+        message.chat.id,
+        bot,
         original_message_id=message.message_id,
-        is_callback=is_callback, state=state,
+        is_callback=is_callback,
+        state=state,
     )
 
 
 @request_history_router.callback_query(F.data.startswith("my_req_page:"))
 async def my_requests_page_cb(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
     await callback_query.answer()
-    if not callback_query.from_user or not callback_query.message: return
+    if not callback_query.from_user or not callback_query.message:
+        return
     page = 1
     try:
         page = int(callback_query.data.split(":")[1])
@@ -53,14 +56,18 @@ async def my_requests_page_cb(callback_query: CallbackQuery, state: FSMContext, 
         logger.warning(f"invalid page number in my_requests_page_cb: {callback_query.data}")
 
     await _send_my_requests_page_logic(
-        callback_query.from_user.id, page, callback_query.message.chat.id, bot,
+        callback_query.from_user.id,
+        page,
+        callback_query.message.chat.id,
+        bot,
         original_message_id=callback_query.message.message_id,
-        is_callback=True, state=state,
+        is_callback=True,
+        state=state,
     )
 
 
 async def _send_my_requests_page_logic(
-        user_id: int, page: int, chat_id: int, bot: Bot, original_message_id: int, is_callback: bool, state: FSMContext
+    user_id: int, page: int, chat_id: int, bot: Bot, original_message_id: int, is_callback: bool, state: FSMContext
 ):
     await state.clear()
     requests_rows = await db.get_user_requests(user_id, page, DEFAULT_PAGE_SIZE)
@@ -91,9 +98,12 @@ async def _send_my_requests_page_logic(
             date_req = req["created_at"][:10]
 
             request_item_parts: list[Union[Text, Bold, Italic, Code]] = [
-                Text(f"\n{req_type_icon} "), Bold(title_disp),
-                Text(f"\n  status: "), Italic(req["status"]),
-                Text(f", requested: "), Text(date_req),
+                Text(f"\n{req_type_icon} "),
+                Bold(title_disp),
+                Text("\n  status: "),
+                Italic(req["status"]),
+                Text(", requested: "),
+                Text(date_req),
             ]
             if req.get("user_note"):
                 request_item_parts.extend([Text("\n  your note: "), Italic(truncate_text(req["user_note"], 70))])
@@ -112,15 +122,19 @@ async def _send_my_requests_page_logic(
     )
 
     keyboard_to_show = final_keyboard_builder.as_markup()
-    final_text_object = as_list(*page_content_elements, sep="\n") if page_content_elements else Text(
-        "🤷 no requests to display.")
+    final_text_object = (
+        as_list(*page_content_elements, sep="\n") if page_content_elements else Text("🤷 no requests to display.")
+    )
     text_to_send = final_text_object.as_markdown()
 
     try:
         if is_callback:
             await bot.edit_message_text(
-                text=text_to_send, chat_id=chat_id, message_id=original_message_id,
-                reply_markup=keyboard_to_show, parse_mode="MarkdownV2",
+                text=text_to_send,
+                chat_id=chat_id,
+                message_id=original_message_id,
+                reply_markup=keyboard_to_show,
+                parse_mode="MarkdownV2",
             )
         else:
             await bot.send_message(
@@ -133,11 +147,13 @@ async def _send_my_requests_page_logic(
             logger.error("telegram badrequest in _send_my_requests_page_logic: %s", e)
             if is_callback and chat_id:
                 error_reply_obj = Text("❗could not update the request list.")
-                await bot.send_message(chat_id, error_reply_obj.as_markdown(), parse_mode="MarkdownV2",
-                                       reply_markup=keyboard_to_show)
+                await bot.send_message(
+                    chat_id, error_reply_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=keyboard_to_show
+                )
     except Exception as e:
         logger.error("exception in _send_my_requests_page_logic: %s", e)
         if is_callback and chat_id:
             error_reply_obj = Text("❗an error occurred.")
-            await bot.send_message(chat_id, error_reply_obj.as_markdown(), parse_mode="MarkdownV2",
-                                   reply_markup=keyboard_to_show)
+            await bot.send_message(
+                chat_id, error_reply_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=keyboard_to_show
+            )

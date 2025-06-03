@@ -25,18 +25,18 @@ def get_user_main_menu_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="📊 my requests", callback_data="main_menu:my_requests"),
         InlineKeyboardButton(text="⚠️ report a problem", callback_data="main_menu:report_problem"),
         InlineKeyboardButton(text="❓ help", callback_data="main_menu:show_help"),
-        InlineKeyboardButton(text="❌ cancel action", callback_data="main_menu:cancel_current_action")
+        InlineKeyboardButton(text="❌ cancel action", callback_data="main_menu:cancel_current_action"),
     )
     builder.adjust(2, 2, 1)
     return builder.as_markup()
 
 
 async def show_main_menu_for_user(
-        event: Union[Message, CallbackQuery],
-        bot: Bot,
-        custom_text_str: Optional[str] = None,
-        custom_text_md: Optional[str] = None,
-        custom_text_html: Optional[str] = None
+    event: Union[Message, CallbackQuery],
+    bot: Bot,
+    custom_text_str: Optional[str] = None,
+    custom_text_md: Optional[str] = None,
+    custom_text_html: Optional[str] = None,
 ):
     user_first_name = event.from_user.first_name if event.from_user else "there"
     reply_markup = get_user_main_menu_keyboard()
@@ -67,23 +67,27 @@ async def show_main_menu_for_user(
                 logger.warning("could not edit message to show main menu: %s. sending new.", e)
                 await event.answer()
                 if event.message.chat:
-                    await bot.send_message(event.message.chat.id, text_to_send, reply_markup=reply_markup,
-                                           parse_mode=parse_mode_to_use)
+                    await bot.send_message(
+                        event.message.chat.id, text_to_send, reply_markup=reply_markup, parse_mode=parse_mode_to_use
+                    )
 
 
 @main_menu_router.callback_query(F.data == "main_menu:show_help")
 async def main_menu_help_cb(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
     await callback_query.answer()
-    if not callback_query.from_user or not callback_query.message: return
+    if not callback_query.from_user or not callback_query.message:
+        return
     await help_command_logic(callback_query, state, bot, callback_query.from_user.id)
 
 
 @main_menu_router.callback_query(F.data == "main_menu:request_media")
 async def main_menu_request_media_cb(callback_query: CallbackQuery, state: FSMContext):
-    if not callback_query.message or not callback_query.from_user: return
+    if not callback_query.message or not callback_query.from_user:
+        return
     await callback_query.answer()
     await register_user_if_not_exists(callback_query.from_user, callback_query.message.chat.id)
     from telecopter.config import TMDB_API_KEY
+
     if not TMDB_API_KEY:
         error_text_obj = Text("⚠️ media search is currently unavailable. please try again later.")
         await callback_query.message.answer(error_text_obj.as_markdown(), parse_mode="MarkdownV2")
@@ -96,7 +100,9 @@ async def main_menu_request_media_cb(callback_query: CallbackQuery, state: FSMCo
 @main_menu_router.callback_query(F.data == "main_menu:my_requests")
 async def main_menu_my_requests_cb(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
     from .request_history import my_requests_entrypoint
-    if not callback_query.message or not callback_query.from_user: return
+
+    if not callback_query.message or not callback_query.from_user:
+        return
     await callback_query.answer()
     await register_user_if_not_exists(callback_query.from_user, callback_query.message.chat.id)
     await my_requests_entrypoint(callback_query.message, bot, state, is_callback=True)
@@ -105,7 +111,9 @@ async def main_menu_my_requests_cb(callback_query: CallbackQuery, state: FSMCont
 @main_menu_router.callback_query(F.data == "main_menu:report_problem")
 async def main_menu_report_problem_cb(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
     from .problem_report import report_command_entry_handler
-    if not callback_query.message or not callback_query.from_user: return
+
+    if not callback_query.message or not callback_query.from_user:
+        return
     await callback_query.answer()
     await register_user_if_not_exists(callback_query.from_user, callback_query.message.chat.id)
     await report_command_entry_handler(callback_query.message, state, bot, is_triggered_by_command=False)
@@ -114,6 +122,7 @@ async def main_menu_report_problem_cb(callback_query: CallbackQuery, state: FSMC
 @main_menu_router.callback_query(F.data == "main_menu:show_start_menu_from_my_requests")
 async def handle_back_to_main_menu_cb(callback_query: CallbackQuery, bot: Bot):
     await callback_query.answer()
-    if not callback_query.from_user or not callback_query.message: return
+    if not callback_query.from_user or not callback_query.message:
+        return
     welcome_text_str = f"👋 welcome back to the main menu, {callback_query.from_user.first_name}!"
     await show_main_menu_for_user(callback_query, bot, custom_text_str=welcome_text_str)

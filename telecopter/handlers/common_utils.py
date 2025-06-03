@@ -23,6 +23,7 @@ async def register_user_if_not_exists(aiogram_user: Optional[AiogramUser], chat_
     else:
         logger.warning("could not register user, aiogram user object is none for chat_id %s.", chat_id)
 
+
 async def is_admin(user_id: int, bot: Bot) -> bool:
     if not ADMIN_GROUP_CHAT_ID:
         logger.warning("admin_group_chat_id not configured. admin check will always be false.")
@@ -55,6 +56,7 @@ async def is_admin(user_id: int, bot: Bot) -> bool:
             e,
         )
         return False
+
 
 async def notify_admin_formatted(
     bot: Bot, formatted_text_object: Text, keyboard: Optional[InlineKeyboardMarkup] = None

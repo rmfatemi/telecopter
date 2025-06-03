@@ -34,7 +34,8 @@ def get_tmdb_select_keyboard(search_results: list) -> InlineKeyboardMarkup:
 async def process_media_name_handler(message: Message, state: FSMContext, bot: Bot):
     if not message.from_user or not message.text:
         reply_text_obj = Text(
-            "✍️ please type the name of the media you're looking for. you can cancel using the main menu.")
+            "✍️ please type the name of the media you're looking for. you can cancel using the main menu."
+        )
         await message.answer(reply_text_obj.as_markdown(), parse_mode="MarkdownV2")
         return
 
@@ -57,10 +58,14 @@ async def process_media_name_handler(message: Message, state: FSMContext, bot: B
         logger.debug("could not delete 'searching...' message.")
 
     if not search_results:
-        reply_text_str = f"😕 sorry, i couldn't find any results for \"{query_text}\".\nyou can try a different name, or choose 'other / not found'."
+        reply_text_str = (
+            f'😕 sorry, i couldn\'t find any results for "{query_text}".\nyou can try a different name, or choose'
+            " 'other / not found'."
+        )
         reply_text_obj = Text(reply_text_str)
         await message.answer(
-            reply_text_obj.as_markdown(), parse_mode="MarkdownV2",
+            reply_text_obj.as_markdown(),
+            parse_mode="MarkdownV2",
             reply_markup=get_tmdb_select_keyboard([]),
         )
         await state.set_state(RequestMediaStates.select_media)
@@ -69,7 +74,8 @@ async def process_media_name_handler(message: Message, state: FSMContext, bot: B
     reply_text_str = f'🔍 here\'s what i found for "{query_text}". please select one:'
     reply_text_obj = Text(reply_text_str)
     await message.answer(
-        reply_text_obj.as_markdown(), parse_mode="MarkdownV2",
+        reply_text_obj.as_markdown(),
+        parse_mode="MarkdownV2",
         reply_markup=get_tmdb_select_keyboard(search_results),
     )
     await state.set_state(RequestMediaStates.select_media)
@@ -80,7 +86,8 @@ async def select_media_callback_handler(callback_query: CallbackQuery, state: FS
     from telecopter.handlers.media_submission import get_request_confirm_keyboard
 
     await callback_query.answer()
-    if not callback_query.from_user or not callback_query.message: return
+    if not callback_query.from_user or not callback_query.message:
+        return
 
     action_data = callback_query.data
 
@@ -93,8 +100,9 @@ async def select_media_callback_handler(callback_query: CallbackQuery, state: FS
             f'your original search term was: "{original_query}".\nthis will be sent as a manual request.'
         )
         prompt_text_obj = Text(prompt_text_str)
-        await callback_query.message.edit_text(prompt_text_obj.as_markdown(), parse_mode="MarkdownV2",
-                                               reply_markup=None)
+        await callback_query.message.edit_text(
+            prompt_text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None
+        )
         await state.set_state(RequestMediaStates.typing_manual_request_description)
         return
 
@@ -132,19 +140,26 @@ async def select_media_callback_handler(callback_query: CallbackQuery, state: FS
 
             if media_details.get("poster_url"):
                 await bot.send_photo(
-                    chat_id=original_message_chat_id, photo=media_details["poster_url"],
-                    caption=full_caption_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=keyboard,
+                    chat_id=original_message_chat_id,
+                    photo=media_details["poster_url"],
+                    caption=full_caption_obj.as_markdown(),
+                    parse_mode="MarkdownV2",
+                    reply_markup=keyboard,
                 )
             else:
                 await bot.send_message(
-                    chat_id=original_message_chat_id, text=full_caption_obj.as_markdown(), parse_mode="MarkdownV2",
+                    chat_id=original_message_chat_id,
+                    text=full_caption_obj.as_markdown(),
+                    parse_mode="MarkdownV2",
                     reply_markup=keyboard,
                 )
     except Exception as e:
         logger.warning(f"error sending media confirmation: {e}. falling back.")
         if callback_query.message and callback_query.from_user:
             await bot.send_message(
-                chat_id=callback_query.from_user.id, text=full_caption_obj.as_markdown(), parse_mode="MarkdownV2",
+                chat_id=callback_query.from_user.id,
+                text=full_caption_obj.as_markdown(),
+                parse_mode="MarkdownV2",
                 reply_markup=keyboard,
             )
     await state.set_state(RequestMediaStates.confirm_media)

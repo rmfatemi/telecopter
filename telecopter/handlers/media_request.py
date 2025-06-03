@@ -28,6 +28,7 @@ def get_tmdb_select_keyboard(search_results: list) -> InlineKeyboardMarkup:
     builder.adjust(1)
     return builder.as_markup()
 
+
 @media_search_router.message(StateFilter(RequestMediaStates.typing_media_name), F.text)
 async def process_media_name_handler(message: Message, state: FSMContext, bot: Bot):
     if not message.from_user or not message.text:
@@ -51,7 +52,7 @@ async def process_media_name_handler(message: Message, state: FSMContext, bot: B
 
     if not search_results:
         await message.answer(
-            f"😕 sorry, i couldn't find any results for \"{query_text}\".\n"
+            f'😕 sorry, i couldn\'t find any results for "{query_text}".\n'
             "you can try a different name, or choose 'other / not found'.",
             reply_markup=get_tmdb_select_keyboard([]),
         )
@@ -64,12 +65,14 @@ async def process_media_name_handler(message: Message, state: FSMContext, bot: B
     )
     await state.set_state(RequestMediaStates.select_media)
 
+
 @media_search_router.callback_query(StateFilter(RequestMediaStates.select_media), F.data.startswith("tmdb_sel:"))
 async def select_media_callback_handler(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
     from telecopter.handlers.media_submission import get_request_confirm_keyboard
 
     await callback_query.answer()
-    if not callback_query.from_user or not callback_query.message: return
+    if not callback_query.from_user or not callback_query.message:
+        return
 
     action_data = callback_query.data
 
@@ -119,18 +122,25 @@ async def select_media_callback_handler(callback_query: CallbackQuery, state: FS
 
             if media_details.get("poster_url"):
                 await bot.send_photo(
-                    chat_id=original_message_chat_id, photo=media_details["poster_url"],
-                    caption=caption_text_md, reply_markup=keyboard, parse_mode="MarkdownV2",
+                    chat_id=original_message_chat_id,
+                    photo=media_details["poster_url"],
+                    caption=caption_text_md,
+                    reply_markup=keyboard,
+                    parse_mode="MarkdownV2",
                 )
             else:
                 await bot.send_message(
-                    chat_id=original_message_chat_id, text=caption_text_md,
-                    reply_markup=keyboard, parse_mode="MarkdownV2",
+                    chat_id=original_message_chat_id,
+                    text=caption_text_md,
+                    reply_markup=keyboard,
+                    parse_mode="MarkdownV2",
                 )
     except Exception as e:
         logger.warning(f"error sending media confirmation: {e}. falling back.")
         await bot.send_message(
-            chat_id=callback_query.from_user.id, text=caption_text_md,
-            reply_markup=keyboard, parse_mode="MarkdownV2",
+            chat_id=callback_query.from_user.id,
+            text=caption_text_md,
+            reply_markup=keyboard,
+            parse_mode="MarkdownV2",
         )
     await state.set_state(RequestMediaStates.confirm_media)

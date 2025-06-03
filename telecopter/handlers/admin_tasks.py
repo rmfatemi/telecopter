@@ -31,24 +31,17 @@ def get_admin_tasks_pagination_keyboard(page: int, total_pages: int) -> Optional
     return None
 
 
-async def list_admin_tasks(
-        message_to_edit: Message,
-        acting_user_id: int,
-        bot: Bot,
-        state: FSMContext,
-        page: int = 1
-):
-  
+async def list_admin_tasks(message_to_edit: Message, acting_user_id: int, bot: Bot, state: FSMContext, page: int = 1):
     if not await is_admin(acting_user_id, bot):
         logger.warning("list_admin_tasks called by non-admin user %s or without privileges.", acting_user_id)
         if message_to_edit.chat:
             denied_text_obj = Text("access denied.")
-          
+
             await bot.send_message(message_to_edit.chat.id, denied_text_obj.as_markdown(), parse_mode="MarkdownV2")
         return
 
     await state.clear()
-  
+
     requests_rows = await db.get_actionable_admin_requests(page, DEFAULT_PAGE_SIZE)
     total_requests = await db.get_actionable_admin_requests_count()
     total_pages = (total_requests + DEFAULT_PAGE_SIZE - 1) // DEFAULT_PAGE_SIZE
@@ -70,15 +63,17 @@ async def list_admin_tasks(
             title_disp = truncate_text(req["title"], 35)
             req_type_icon = "🎬" if req["request_type"] in ["movie", "tv", "manual_media"] else "⚠️"
             user_db_info = await db.get_user(req["user_id"])
-            user_name_disp = user_db_info['username'] or user_db_info['first_name'] if user_db_info else "unknown user"
+            user_name_disp = user_db_info["username"] or user_db_info["first_name"] if user_db_info else "unknown user"
             created_date = req["created_at"][:10]
 
-            item_text_str = f"{req_type_icon} id:{req['request_id']} - {title_disp} ({req['status']})\nby {user_name_disp} on {created_date}"
+            item_text_str = (
+                f"{req_type_icon} id:{req['request_id']} - {title_disp} ({req['status']})\nby {user_name_disp} on"
+                f" {created_date}"
+            )
             content_elements.append(Text(item_text_str))
 
             tasks_keyboard_builder.button(
-                text=f"mod id:{req['request_id']}",
-                callback_data=f"admin_task_moderate:{req['request_id']}"
+                text=f"mod id:{req['request_id']}", callback_data=f"admin_task_moderate:{req['request_id']}"
             )
             content_elements.append(Text("---"))
 
@@ -90,20 +85,27 @@ async def list_admin_tasks(
             tasks_keyboard_builder.row(*row_buttons)
 
     tasks_keyboard_builder.row(
-        InlineKeyboardButton(text="⬅️ back to admin panel", callback_data="admin_tasks_back_panel"))
+        InlineKeyboardButton(text="⬅️ back to admin panel", callback_data="admin_tasks_back_panel")
+    )
 
-    final_text_content_obj = as_list(*content_elements, sep="\n") if content_elements else Text(
-        "no tasks information to display.")
+    final_text_content_obj = (
+        as_list(*content_elements, sep="\n") if content_elements else Text("no tasks information to display.")
+    )
     reply_markup = tasks_keyboard_builder.as_markup()
 
     try:
-        await message_to_edit.edit_text(final_text_content_obj.as_markdown(), parse_mode="MarkdownV2",
-                                        reply_markup=reply_markup)
+        await message_to_edit.edit_text(
+            final_text_content_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=reply_markup
+        )
     except Exception as e:
         logger.error(f"failed to edit admin tasks message: {e}, sending new.")
         if message_to_edit.chat:
-            await bot.send_message(message_to_edit.chat.id, final_text_content_obj.as_markdown(),
-                                   parse_mode="MarkdownV2", reply_markup=reply_markup)
+            await bot.send_message(
+                message_to_edit.chat.id,
+                final_text_content_obj.as_markdown(),
+                parse_mode="MarkdownV2",
+                reply_markup=reply_markup,
+            )
 
 
 @admin_tasks_router.callback_query(F.data.startswith("admin_tasks_page:"))
@@ -122,17 +124,14 @@ async def admin_tasks_page_cb(callback_query: CallbackQuery, bot: Bot, state: FS
 
     await callback_query.answer()
     await list_admin_tasks(
-        message_to_edit=callback_query.message,
-        acting_user_id=acting_user_id,
-        bot=bot,
-        state=state,
-        page=page
+        message_to_edit=callback_query.message, acting_user_id=acting_user_id, bot=bot, state=state, page=page
     )
 
 
 @admin_tasks_router.callback_query(F.data == "admin_tasks_back_panel")
 async def admin_tasks_back_panel_cb(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
     from .admin_panel import show_admin_panel
+
     if not callback_query.from_user or not await is_admin(callback_query.from_user.id, bot):
         await callback_query.answer("access denied.", show_alert=True)
         return
@@ -154,24 +153,27 @@ async def admin_task_moderate_trigger_cb(callback_query: CallbackQuery, bot: Bot
         logger.error(f"invalid request_id in admin_task_moderate callback: {request_id_str}")
         if callback_query.message and callback_query.message.chat:
             error_text_obj = Text("error: could not identify the task.")
-            await bot.send_message(callback_query.message.chat.id, error_text_obj.as_markdown(),
-                                   parse_mode="MarkdownV2")
+            await bot.send_message(
+                callback_query.message.chat.id, error_text_obj.as_markdown(), parse_mode="MarkdownV2"
+            )
         return
 
     db_request_row = await db.get_request_by_id(request_id)
     if not db_request_row:
         if callback_query.message and callback_query.message.chat:
             error_text_obj = Text(f"error: task id {request_id} not found.")
-            await bot.send_message(callback_query.message.chat.id, error_text_obj.as_markdown(),
-                                   parse_mode="MarkdownV2")
+            await bot.send_message(
+                callback_query.message.chat.id, error_text_obj.as_markdown(), parse_mode="MarkdownV2"
+            )
         return
 
     db_user_row = await db.get_user(db_request_row["user_id"])
     if not db_user_row:
         if callback_query.message and callback_query.message.chat:
             error_text_obj = Text(f"error: user for task id {request_id} not found.")
-            await bot.send_message(callback_query.message.chat.id, error_text_obj.as_markdown(),
-                                   parse_mode="MarkdownV2")
+            await bot.send_message(
+                callback_query.message.chat.id, error_text_obj.as_markdown(), parse_mode="MarkdownV2"
+            )
         return
 
     admin_msg_obj = format_request_for_admin(dict(db_request_row), dict(db_user_row))
@@ -185,5 +187,5 @@ async def admin_task_moderate_trigger_cb(callback_query: CallbackQuery, bot: Bot
         chat_id=callback_query.from_user.id,
         text=admin_msg_obj.as_markdown(),
         parse_mode="MarkdownV2",
-        reply_markup=admin_keyboard
+        reply_markup=admin_keyboard,
     )

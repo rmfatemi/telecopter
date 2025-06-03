@@ -1,20 +1,25 @@
 import asyncio
-from typing import Union
+
 from aiogram import Bot, Dispatcher, types
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.client.default import DefaultBotProperties
 
 from telecopter.logger import setup_logger
+from telecopter.config import TELEGRAM_BOT_TOKEN
 from telecopter.database import initialize_database
-from telecopter.config import TELEGRAM_BOT_TOKEN, ADMIN_GROUP_CHAT_ID
 
-from telecopter.handlers import (
-    admin_panel_router, admin_tasks_router, admin_announce_router, admin_moderate_router,
-    core_commands_router, main_menu_router,
-    media_search_router, media_submission_router,
-    problem_report_router, request_history_router,
-    handler_fallback_router
-)
+from telecopter.handlers.main_menu import main_menu_router
+from telecopter.handlers.admin_panel import admin_panel_router
+from telecopter.handlers.admin_tasks import admin_tasks_router
+from telecopter.handlers.media_search import media_search_router
+from telecopter.handlers.core_commands import core_commands_router
+from telecopter.handlers.problem_report import problem_report_router
+from telecopter.handlers.admin_announce import admin_announce_router
+from telecopter.handlers.admin_moderate import admin_moderate_router
+from telecopter.handlers.request_history import request_history_router
+from telecopter.handlers.media_submission import media_submission_router
+from telecopter.handlers.handler_fallback import handler_fallback_router
+
 
 logger = setup_logger(__name__)
 
@@ -29,26 +34,6 @@ async def set_bot_commands(bot: Bot):
         logger.info("user bot commands set successfully for private chats.")
     except Exception as e:
         logger.error("failed to set user bot commands: %s", e)
-
-    if ADMIN_GROUP_CHAT_ID:
-        admin_specific_commands_for_pm = [
-            types.BotCommand(command="start", description="🏁 show admin panel"),
-            types.BotCommand(command="admin", description="👑 access admin panel"),
-            types.BotCommand(command="cancel", description="❌ cancel current operation"),
-        ]
-        # For admins in their PM with the bot, it's better to set commands based on user ID
-        # or use BotCommandScopeAllAdministrators if you list them as bot admins.
-        # For simplicity, we'll assume the /admin command is the primary way for admins to get their panel.
-        # The /start command will also lead them there.
-
-        # No specific commands needed for the admin group itself if interaction is through PM.
-        # If you want commands IN the admin group, define them here with BotCommandScopeChat.
-        # For now, focusing on PM interaction for admins.
-
-        # To make /admin command visible to admins in PM, we could try:
-        # (This requires knowing admin IDs to set scopes individually, or a global scope)
-        # However, our start_command_handler will direct admins to their panel.
-        # The /admin command is an additional explicit way.
     logger.info("admin commands can be accessed via /start or /admin in pm.")
 
 
