@@ -83,15 +83,15 @@ async def main_async():
         logger.info("bot session closed.")
 
 
-def main_sync():
+def main():
     try:
         asyncio.run(main_async())
     except KeyboardInterrupt:
         logger.info("bot process interrupted by user (ctrl+c). shutting down.")
     except Exception as e:
-        logger.critical("uncaught exception in main_sync wrapper: %s", e, exc_info=True)
+        logger.critical("uncaught exception in main wrapper: %s", e, exc_info=True)
 
 
 if __name__ == "__main__":
     logger.info("starting bot server...")
-    main_sync()
+    main()
