@@ -49,21 +49,19 @@ async def main_async():
     storage = MemoryStorage()
     default_props = DefaultBotProperties(parse_mode="MarkdownV2")
     bot = Bot(token=TELEGRAM_BOT_TOKEN, default=default_props)
+
     dp = Dispatcher(storage=storage)
 
-    dp.include_router(core_commands_router)
     dp.include_router(main_menu_router)
-
     dp.include_router(admin_panel_router)
     dp.include_router(admin_tasks_router)
+    dp.include_router(media_search_router)
+    dp.include_router(core_commands_router)
     dp.include_router(admin_announce_router)
     dp.include_router(admin_moderate_router)
-
-    dp.include_router(media_search_router)
-    dp.include_router(media_submission_router)
     dp.include_router(problem_report_router)
     dp.include_router(request_history_router)
-
+    dp.include_router(media_submission_router)
     dp.include_router(handler_fallback_router)
 
     await set_bot_commands(bot)
@@ -92,5 +90,5 @@ def main_sync():
 
 
 if __name__ == "__main__":
-    logger.info("starting bot directly via __main__...")
+    logger.info("starting bot server...")
     main_sync()
