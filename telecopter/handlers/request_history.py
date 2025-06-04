@@ -8,7 +8,7 @@ from aiogram.utils.formatting import Text, Bold, Italic, Code, as_list
 from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup, InlineKeyboardButton
 
 import telecopter.database as db
-from telecopter.utils import format_request_item_display_parts  # Using the new utility
+from telecopter.utils import format_request_item_display_parts
 from telecopter.logger import setup_logger
 from telecopter.config import DEFAULT_PAGE_SIZE
 from telecopter.constants import (
@@ -20,6 +20,7 @@ from telecopter.constants import (
     MSG_REQUESTS_PAGE_HEADER,
     MSG_ITEM_MESSAGE_DIVIDER,
 )
+
 
 logger = setup_logger(__name__)
 

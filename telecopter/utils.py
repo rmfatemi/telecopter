@@ -17,6 +17,7 @@ from telecopter.constants import (
     ICON_GENERIC_REQUEST,
 )
 
+
 logger = setup_logger(__name__)
 
 
@@ -234,9 +235,9 @@ def format_request_item_display_parts(
     admin_note = request_data.get("admin_note")
     note_trunc_len = 70
 
-    if user_note and view_context == "admin_list_item":  # Admin sees user note
+    if user_note and view_context == "admin_list_item":
         display_parts.append(Text("\n", Bold("User Note: "), Italic(truncate_text(user_note, note_trunc_len))))
-    elif user_note and view_context == "user_history_item":  # User sees their own note
+    elif user_note and view_context == "user_history_item":
         display_parts.append(Text("\n", Bold("Your Note: "), Italic(truncate_text(user_note, note_trunc_len))))
 
     if view_context == "user_history_item" and admin_note:

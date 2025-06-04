@@ -23,6 +23,7 @@ from telecopter.constants import (
     ICON_ANNOUNCEMENT,
 )
 
+
 logger = setup_logger(__name__)
 
 admin_announce_router = Router(name="admin_announce_router")

@@ -8,6 +8,7 @@ from telecopter.logger import setup_logger
 from telecopter.config import DATABASE_FILE_PATH, DEFAULT_PAGE_SIZE
 from telecopter.constants import USER_STATUS_NEW, USER_STATUS_APPROVED
 
+
 logger = setup_logger(__name__)
 
 

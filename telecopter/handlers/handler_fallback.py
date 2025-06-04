@@ -10,6 +10,7 @@ from telecopter.constants import (
     MSG_FALLBACK_UNHANDLED_NON_TEXT,
 )
 
+
 logger = setup_logger(__name__)
 
 handler_fallback_router = Router(name="handler_fallback_router")
