@@ -21,7 +21,7 @@ TMDB_MOVIE_URL_BASE = "https://www.themoviedb.org/movie/"
 
 DATABASE_FILE_PATH: str = os.environ.get("DATABASE_FILE_PATH", "data/telecopter.db")
 
-DEFAULT_PAGE_SIZE: int = int(os.environ.get("DEFAULT_PAGE_SIZE", "5"))
+DEFAULT_PAGE_SIZE: int = int(os.environ.get("DEFAULT_PAGE_SIZE", "3"))
 MAX_NOTE_LENGTH: int = int(os.environ.get("MAX_NOTE_LENGTH", "1000"))
 MAX_REPORT_LENGTH: int = int(os.environ.get("MAX_REPORT_LENGTH", "2000"))
 

@@ -17,8 +17,8 @@ from telecopter.constants import (
     TITLE_ADMIN_TASKS_LIST,
     MSG_NO_ADMIN_TASKS_PAGE_1,
     MSG_NO_ADMIN_TASKS_OTHER_PAGE,
-    BTN_PREVIOUS_TASKS,
-    BTN_NEXT_TASKS,
+    BTN_PREVIOUS_PAGE,
+    BTN_NEXT_PAGE,
     BTN_BACK_TO_ADMIN_PANEL,
     BTN_REVIEW_USER_APPROVAL_TASK,
     CALLBACK_ADMIN_TASKS_PAGE_PREFIX,
@@ -54,13 +54,13 @@ def get_admin_tasks_pagination_keyboard(page: int, total_pages: int) -> Optional
     prev_button: Optional[InlineKeyboardButton] = None
     if page > 1:
         prev_button = InlineKeyboardButton(
-            text=BTN_PREVIOUS_TASKS, callback_data=f"{CALLBACK_ADMIN_TASKS_PAGE_PREFIX}:{page - 1}"
+            text=BTN_PREVIOUS_PAGE, callback_data=f"{CALLBACK_ADMIN_TASKS_PAGE_PREFIX}:{page - 1}"
         )
 
     next_button: Optional[InlineKeyboardButton] = None
     if page < total_pages:
         next_button = InlineKeyboardButton(
-            text=BTN_NEXT_TASKS, callback_data=f"{CALLBACK_ADMIN_TASKS_PAGE_PREFIX}:{page + 1}"
+            text=BTN_NEXT_PAGE, callback_data=f"{CALLBACK_ADMIN_TASKS_PAGE_PREFIX}:{page + 1}"
         )
 
     if prev_button and next_button:
