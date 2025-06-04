@@ -135,6 +135,7 @@ MSG_ADMIN_USER_APPROVAL_TASK_DETAILS_TITLE = "👤 User Approval Task Details (I
 MSG_ADMIN_USER_APPROVAL_TASK_USER_INFO_LABEL = "User to approve/reject: "
 MSG_ADMIN_USER_NOTIFY_FAIL_SUFFIX = " (failed to notify user)"
 MSG_ADMIN_USER_REJECTED_CONFIRM = "❌ User {user_name} (ID: {user_id}) has been rejected. Task {task_id} closed."
+MSG_ADMIN_ACTION_WITH_NOTE_PROCESSED = "✅ Action (with note) for request ID {request_id} processed: {log_message}"
 
 # MSG_ERROR
 MSG_ERROR_PROCESSING_ACTION_ALERT = "Error processing action."
