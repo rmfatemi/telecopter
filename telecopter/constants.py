@@ -1,3 +1,8 @@
+# MEDIA TYPES
+MEDIA_TYPE_MOVIE = "movie"
+MEDIA_TYPE_TV = "tv"
+MEDIA_TYPE_MANUAL = "manual_media"
+
 # USER STATUS
 USER_STATUS_APPROVED = "approved"
 USER_STATUS_NEW = "new"
@@ -115,7 +120,7 @@ MSG_ADMIN_ANNOUNCE_FAILURES_SUFFIX = " {failed_count} failures."
 MSG_ADMIN_ANNOUNCE_NO_USERS = "👥 No registered users found to send announcement to."
 MSG_ADMIN_ANNOUNCE_SENT_CONFIRM = "✅ Announcement sent to {sent_count} users."
 MSG_ADMIN_CONTEXT_ERROR_FOR_NOTE = "❗Error: Could not retrieve context for adding note. Please try the action again."
-MSG_ADMIN_MESSAGE_DIVIDER = "---"
+MSG_ITEM_MESSAGE_DIVIDER = "---"
 MSG_ADMIN_MODERATE_UPDATE_FALLBACK = "Update for request ID {request_id}: {log_message} (Note: {admin_note})"
 MSG_ADMIN_NOTE_LABEL = "Admin's note:"
 MSG_ADMIN_NOTIFY_NEW_USER_TASK_TITLE = "🆕 Task: New User Approval Request"
@@ -277,5 +282,14 @@ PROMPT_PROBLEM_DESCRIPTION_RETRY = "✍️ Please type your problem description,
 PROMPT_REQUEST_NOTE = "📝 Please send a short note for your request."
 
 # TITLES
-TITLE_ADMIN_PANEL = "👑 Admin Panel"
+TITLE_ADMIN_PANEL = "🧑‍💼 Admin Panel"
 TITLE_ADMIN_TASKS_LIST = "📋 Admin Tasks (Page {page} of {total_pages})"
+
+# ICONS
+ICON_MOVIE = "🎬"
+ICON_TV_SHOW = "📺"
+ICON_ANNOUNCEMENT = "📢"
+ICON_MANUAL_REQUEST = "✍️"
+ICON_USER_APPROVAL = "👤"
+ICON_PROBLEM_REPORT = "⚠️"
+ICON_GENERIC_REQUEST = "📑"
