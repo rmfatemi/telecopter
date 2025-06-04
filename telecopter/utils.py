@@ -141,7 +141,7 @@ def format_request_for_admin(request_data: Dict, user_info: Optional[Dict] = Non
         Text(Bold("Request ID:"), " ", Code(str(req_id))),
         Text(Bold("User:"), " ", *user_display_elements),
         Text(Bold("Type:"), " ", req_type_icon_str, " ", req_type_display_name),
-        Text(Bold("Title/Summary:"), " ", Italic(req_title_raw)),
+        Text(Bold("Title:"), " ", Italic(req_title_raw)),
     ]
 
     if req_type in [MEDIA_TYPE_MOVIE, MEDIA_TYPE_TV, MEDIA_TYPE_MANUAL]:
