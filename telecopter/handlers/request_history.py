@@ -8,7 +8,7 @@ from aiogram.utils.formatting import Text, Bold, Italic, Code, as_list
 from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup, InlineKeyboardButton
 
 import telecopter.database as db
-from telecopter.utils import truncate_text
+from telecopter.utils import format_request_item_display_parts  # Using the new utility
 from telecopter.logger import setup_logger
 from telecopter.config import DEFAULT_PAGE_SIZE
 from telecopter.constants import (
@@ -18,6 +18,7 @@ from telecopter.constants import (
     MSG_NO_REQUESTS_YET,
     MSG_NO_MORE_REQUESTS,
     MSG_REQUESTS_PAGE_HEADER,
+    MSG_ITEM_MESSAGE_DIVIDER,
 )
 
 logger = setup_logger(__name__)
@@ -27,18 +28,24 @@ request_history_router = Router(name="request_history_router")
 
 def get_my_requests_pagination_keyboard(page: int, total_pages: int) -> Optional[InlineKeyboardMarkup]:
     builder = InlineKeyboardBuilder()
+
     if page > 1:
         builder.button(text=BTN_PREVIOUS_PAGE, callback_data=f"my_req_page:{page - 1}")
     if page < total_pages:
         builder.button(text=BTN_NEXT_PAGE, callback_data=f"my_req_page:{page + 1}")
-    if builder.buttons:
-        builder.adjust(2)
+
+    added_buttons_list = list(builder.buttons)
+    num_added_buttons = len(added_buttons_list)
+
+    if num_added_buttons > 0:
+        builder.adjust(2 if num_added_buttons > 1 else 1)
         return builder.as_markup()
+
     return None
 
 
 async def my_requests_entrypoint(
-    base_message: Message, requesting_user_id: int, bot: Bot, state: FSMContext, is_callback: bool = False
+        base_message: Message, requesting_user_id: int, bot: Bot, state: FSMContext, is_callback: bool = False
 ):
     if not base_message or not base_message.chat:
         logger.warning("my_requests_entrypoint called with invalid base_message or chat.")
@@ -62,7 +69,8 @@ async def my_requests_page_cb(callback_query: CallbackQuery, state: FSMContext, 
         return
     page = 1
     try:
-        page = int(callback_query.data.split(":")[1])
+        page_str = callback_query.data.split(":")[1]
+        page = int(page_str)
     except (IndexError, ValueError):
         logger.warning(f"invalid page number in my_requests_page_cb: {callback_query.data}")
 
@@ -78,7 +86,7 @@ async def my_requests_page_cb(callback_query: CallbackQuery, state: FSMContext, 
 
 
 async def _send_my_requests_page_logic(
-    user_id: int, page: int, chat_id: int, bot: Bot, original_message_id: int, is_callback: bool, state: FSMContext
+        user_id: int, page: int, chat_id: int, bot: Bot, original_message_id: int, is_callback: bool, state: FSMContext
 ):
     await state.clear()
 
@@ -99,50 +107,41 @@ async def _send_my_requests_page_logic(
         page_content_elements.append(Text(MSG_NO_REQUESTS_YET))
     elif not requests_rows and page > 1:
         page_content_elements.append(Text(MSG_NO_MORE_REQUESTS.format(page=page)))
-        if page > 1:
-            final_keyboard_builder.button(text=BTN_PREVIOUS_PAGE, callback_data=f"my_req_page:{page - 1}")
     else:
         page_content_elements.append(Bold(MSG_REQUESTS_PAGE_HEADER.format(page=page, total_pages=total_pages)))
-        page_content_elements.append(Text("\n"))
+        if requests_rows:
+            page_content_elements.append(Text("\n"))
 
         for req_row in requests_rows:
             req = dict(req_row)
-            title_disp = truncate_text(req["title"], 50)
-            req_type_icon = "🎬" if req["request_type"] in ["movie", "tv", "manual_media"] else "⚠️"
-            date_req = req["created_at"][:10]
 
-            request_item_parts: list[Union[Text, Bold, Italic, Code]] = [
-                Text(f"\n{req_type_icon} "),
-                Bold(title_disp),
-                Text("\n  status: "),
-                Italic(req["status"]),
-                Text(", requested: "),
-                Text(date_req),
-            ]
-            if req.get("user_note"):
-                request_item_parts.extend([Text("\n  your note: "), Italic(truncate_text(req["user_note"], 70))])
-            if req.get("admin_note"):
-                request_item_parts.extend([Text("\n  admin note: "), Italic(truncate_text(req["admin_note"], 70))])
-            request_item_parts.append(Text("\n---"))
-            page_content_elements.append(as_list(*request_item_parts, sep=""))
+            current_item_display_parts = format_request_item_display_parts(req, view_context="user_history_item")
 
-        pagination_kb = get_my_requests_pagination_keyboard(page, total_pages)
-        if pagination_kb:
-            for row_buttons in pagination_kb.inline_keyboard:
-                final_keyboard_builder.row(*row_buttons)
+            if current_item_display_parts:
+                page_content_elements.append(as_list(*current_item_display_parts, sep=""))
+                page_content_elements.append(Text(MSG_ITEM_MESSAGE_DIVIDER))
+
+        if page_content_elements and isinstance(page_content_elements[-1], Text) and page_content_elements[-1].render()[
+            0] == MSG_ITEM_MESSAGE_DIVIDER:
+            page_content_elements.pop()
+
+    pagination_kb = get_my_requests_pagination_keyboard(page, total_pages)
+    if pagination_kb:
+        for row_buttons in pagination_kb.inline_keyboard:
+            final_keyboard_builder.row(*row_buttons)
 
     final_keyboard_builder.row(
         InlineKeyboardButton(text=BTN_BACK_TO_MAIN_MENU, callback_data="main_menu:show_start_menu_from_my_requests")
     )
-
     keyboard_to_show = final_keyboard_builder.as_markup()
 
-    if not page_content_elements and page == 1:
-        final_text_object = Text(MSG_NO_REQUESTS_YET)
-    elif page_content_elements:
-        final_text_object = as_list(*page_content_elements, sep="\n")
+    if not requests_rows:
+        if page_content_elements:
+            final_text_object = page_content_elements[0]
+        else:
+            final_text_object = Text(MSG_NO_REQUESTS_YET)
     else:
-        final_text_object = Text(MSG_NO_MORE_REQUESTS.format(page=page)) if page > 1 else Text(MSG_NO_REQUESTS_YET)
+        final_text_object = as_list(*page_content_elements, sep="\n")
 
     text_to_send = final_text_object.as_markdown()
 
@@ -163,6 +162,6 @@ async def _send_my_requests_page_logic(
         if "message is not modified" in str(e).lower():
             logger.debug("message not modified for my_requests page %s, user %s.", page, user_id)
         else:
-            logger.error("telegram badrequest in _send_my_requests_page_logic: %s for user %s", e, user_id)
+            logger.error("telegram badrequest in _send_my_requests_page_logic for user %s: %s", user_id, e)
     except Exception as e:
-        logger.error("exception in _send_my_requests_page_logic: %s for user %s", e, user_id)
+        logger.error("exception in _send_my_requests_page_logic for user %s: %s", user_id, e)

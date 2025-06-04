@@ -52,7 +52,7 @@ from telecopter.constants import (
     MSG_ADMIN_ACTION_TAKEN_BY,
     MSG_ADMIN_ACTION_TAKEN_SUFFIX,
     MSG_ADMIN_NOTE_LABEL,
-    MSG_ADMIN_MESSAGE_DIVIDER,
+    MSG_ITEM_MESSAGE_DIVIDER,
 )
 
 logger = setup_logger(__name__)
@@ -273,7 +273,7 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
     if callback_query.message:
         updated_admin_notification_text_obj = Text(
             Text(original_message_content if original_message_content else "Request details"),
-            MSG_ADMIN_MESSAGE_DIVIDER,
+            MSG_ITEM_MESSAGE_DIVIDER,
             Bold(MSG_ADMIN_ACTION_TAKEN_BY),
             TextLink(callback_query.from_user.full_name, url=f"tg://user?id={callback_query.from_user.id}"),
             Text(MSG_ADMIN_ACTION_TAKEN_SUFFIX.format(action=action_full_key.replace("_", " "))),
@@ -358,7 +358,7 @@ async def admin_note_handler(message: Message, state: FSMContext, bot: Bot):
     if original_admin_chat_id and original_admin_message_id:
         updated_admin_notification_text_obj = Text(
             Text(original_message_text_from_fsm),
-            MSG_ADMIN_MESSAGE_DIVIDER,
+            MSG_ITEM_MESSAGE_DIVIDER,
             Bold(MSG_ADMIN_ACTION_TAKEN_BY),
             TextLink(message.from_user.full_name, url=f"tg://user?id={message.from_user.id}"),
             Text(MSG_ADMIN_ACTION_TAKEN_SUFFIX.format(action=f"{base_action} with note")),

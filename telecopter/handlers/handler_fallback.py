@@ -2,7 +2,6 @@ from aiogram import Bot
 from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.filters import StateFilter
-from aiogram.fsm.context import FSMContext
 from aiogram.utils.formatting import Text
 
 from telecopter.logger import setup_logger
@@ -17,7 +16,7 @@ handler_fallback_router = Router(name="handler_fallback_router")
 
 
 @handler_fallback_router.message(StateFilter(None), F.text)
-async def unhandled_text_message_handler(message: Message, state: FSMContext, bot: Bot):
+async def unhandled_text_message_handler(message: Message, bot: Bot):
     from .main_menu import show_main_menu_for_user
 
     if message.text and message.text.startswith("/"):
@@ -37,7 +36,7 @@ async def unhandled_text_message_handler(message: Message, state: FSMContext, bo
 
 
 @handler_fallback_router.message(StateFilter(None))
-async def unhandled_non_text_message_handler(message: Message, state: FSMContext, bot: Bot):
+async def unhandled_non_text_message_handler(message: Message, bot: Bot):
     from .main_menu import show_main_menu_for_user
 
     logger.info(

@@ -20,6 +20,7 @@ from telecopter.constants import (
     BTN_ANNOUNCE_UNMUTED,
     BTN_ANNOUNCE_MUTED,
     BTN_ANNOUNCE_CANCEL,
+    ICON_ANNOUNCEMENT,
 )
 
 logger = setup_logger(__name__)
@@ -78,7 +79,7 @@ async def process_announcement_type_cb(callback_query: CallbackQuery, state: FSM
         if callback_query.message:
             try:
                 await callback_query.message.edit_text(
-                    Text(MSG_ADMIN_ANNOUNCE_CANCELLED).as_markdown(), parse_mode="MarkdownV2"
+                    Text(MSG_ADMIN_ANNOUNCE_CANCELLED).as_markdown(), parse_mode="MarkdownV2", reply_markup=None
                 )
             except Exception:
                 logger.debug("could not edit message for announcement cancel")
@@ -93,7 +94,11 @@ async def process_announcement_type_cb(callback_query: CallbackQuery, state: FSM
     prompt_text_str = PROMPT_ADMIN_ANNOUNCE_TYPING_MESSAGE.format(muted_status=muted_status)
     prompt_text_obj = Text(prompt_text_str)
     if callback_query.message:
-        await callback_query.message.edit_text(prompt_text_obj.as_markdown(), parse_mode="MarkdownV2")
+        try:
+            await callback_query.message.edit_text(prompt_text_obj.as_markdown(), parse_mode="MarkdownV2",
+                                                   reply_markup=None)
+        except Exception as e:
+            logger.debug(f"Could not edit message for typing prompt: {e}")
 
 
 @admin_announce_router.message(StateFilter(AdminAnnounceStates.typing_message), F.text)
@@ -109,13 +114,15 @@ async def process_announcement_message_text(message: Message, state: FSMContext,
     await state.clear()
 
     formatted_announcement_content = Text(
-        Bold("📢 Announcement from admin:"), "\n\n", Text(announcement_text_from_admin)
+        Bold(ICON_ANNOUNCEMENT, " Announcement from admin:"), "\n\n", Text(announcement_text_from_admin)
     )
     final_message_to_send_md = formatted_announcement_content.as_markdown()
 
     chat_ids = await db.get_all_user_chat_ids()
     admin_user_id = message.from_user.id
-    if not chat_ids:
+
+    if not chat_ids or (len(chat_ids) == 1 and admin_user_id in chat_ids and len(
+            chat_ids) > 0):
         response_text_obj = Text(MSG_ADMIN_ANNOUNCE_NO_USERS)
         await message.reply(response_text_obj.as_markdown(), parse_mode="MarkdownV2")
         await show_admin_panel(message, bot)
@@ -145,6 +152,6 @@ async def process_announcement_message_text(message: Message, state: FSMContext,
     await db.log_admin_action(
         admin_user_id=admin_user_id,
         action="announce_muted" if is_muted else "announce",
-        details=f"sent: {sent_count}, failed: {failed_count}. msg: {announcement_text_from_admin[:100]}",
+        details=f"Sent: {sent_count}, Failed: {failed_count}. Msg: {announcement_text_from_admin[:100]}...",
     )
     await show_admin_panel(message, bot)
