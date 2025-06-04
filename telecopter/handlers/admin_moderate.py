@@ -178,7 +178,7 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
         logger.warning("admin_action_callback_handler: message text/caption is missing.")
         return
 
-    if not await is_admin(callback_query.from_user.id, bot):
+    if not await is_admin(callback_query.from_user.id):
         if callback_query.message.chat:
             await bot.send_message(
                 callback_query.message.chat.id,
@@ -298,7 +298,7 @@ async def admin_note_handler(message: Message, state: FSMContext, bot: Bot):
     if not message.from_user or not message.text:
         return
 
-    if not await is_admin(message.from_user.id, bot):
+    if not await is_admin(message.from_user.id):
         reply_text_obj = Text(MSG_ADMIN_ONLY_ACTION)
         await message.reply(reply_text_obj.as_markdown(), parse_mode="MarkdownV2")
         await state.clear()

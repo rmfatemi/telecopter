@@ -39,7 +39,7 @@ def get_admin_panel_keyboard() -> InlineKeyboardMarkup:
 
 
 async def show_admin_panel(event: Union[Message, CallbackQuery], bot: Bot):
-    if not event.from_user or not await is_admin(event.from_user.id, bot):
+    if not event.from_user or not await is_admin(event.from_user.id):
         if isinstance(event, Message):
             text_obj = Text(MSG_ACCESS_DENIED)
             await event.reply(text_obj.as_markdown(), parse_mode="MarkdownV2")
@@ -74,7 +74,7 @@ async def show_admin_panel_command(message: Message, bot: Bot):
 async def admin_panel_view_tasks_cb(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
     from .admin_tasks import list_admin_tasks
 
-    if not callback_query.from_user or not await is_admin(callback_query.from_user.id, bot):
+    if not callback_query.from_user or not await is_admin(callback_query.from_user.id):
         await callback_query.answer(MSG_NOT_AUTHORIZED_ALERT, show_alert=True)
         return
     await callback_query.answer()
@@ -92,7 +92,7 @@ async def admin_panel_view_tasks_cb(callback_query: CallbackQuery, bot: Bot, sta
 async def admin_panel_send_announcement_cb(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
     from .admin_announce import ask_announcement_type
 
-    if not callback_query.from_user or not await is_admin(callback_query.from_user.id, bot):
+    if not callback_query.from_user or not await is_admin(callback_query.from_user.id):
         await callback_query.answer(MSG_NOT_AUTHORIZED_ALERT, show_alert=True)
         return
     await callback_query.answer()

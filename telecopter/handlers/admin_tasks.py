@@ -41,6 +41,7 @@ from telecopter.constants import (
     MSG_ERROR_UNEXPECTED,
 )
 
+
 logger = setup_logger(__name__)
 
 admin_tasks_router = Router(name="admin_tasks_router")
@@ -74,7 +75,7 @@ def get_admin_tasks_pagination_keyboard(page: int, total_pages: int) -> Optional
 
 
 async def list_admin_tasks(message_to_edit: Message, acting_user_id: int, bot: Bot, state: FSMContext, page: int = 1):
-    if not await is_admin(acting_user_id, bot):
+    if not await is_admin(acting_user_id):
         logger.warning("list_admin_tasks called by non-admin user %s.", acting_user_id)
         if message_to_edit.chat:
             text_obj = Text(MSG_ACCESS_DENIED)
@@ -169,11 +170,7 @@ async def list_admin_tasks(message_to_edit: Message, acting_user_id: int, bot: B
 
 @admin_tasks_router.callback_query(F.data.startswith(CALLBACK_ADMIN_TASKS_PAGE_PREFIX + ":"))
 async def admin_tasks_page_cb(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
-    if (
-        not callback_query.from_user
-        or not await is_admin(callback_query.from_user.id, bot)
-        or not callback_query.message
-    ):
+    if not callback_query.from_user or not await is_admin(callback_query.from_user.id) or not callback_query.message:
         text_obj = Text(MSG_ERROR_PROCESSING_ACTION_ALERT)
         await callback_query.answer(text_obj.as_markdown(), show_alert=True)
         return
@@ -195,7 +192,7 @@ async def admin_tasks_page_cb(callback_query: CallbackQuery, bot: Bot, state: FS
 async def admin_tasks_back_panel_cb(callback_query: CallbackQuery, bot: Bot):
     from .admin_panel import show_admin_panel
 
-    if not callback_query.from_user or not await is_admin(callback_query.from_user.id, bot):
+    if not callback_query.from_user or not await is_admin(callback_query.from_user.id):
         text_obj = Text(MSG_ACCESS_DENIED)
         await callback_query.answer(text_obj.as_markdown(), show_alert=True)
         return
@@ -208,11 +205,7 @@ async def admin_tasks_back_panel_cb(callback_query: CallbackQuery, bot: Bot):
     | F.data.startswith(CALLBACK_ADMIN_REVIEW_USER_APPROVAL_PREFIX + ":")
 )
 async def admin_task_review_or_moderate_trigger_cb(callback_query: CallbackQuery, bot: Bot):
-    if (
-        not callback_query.from_user
-        or not await is_admin(callback_query.from_user.id, bot)
-        or not callback_query.message
-    ):
+    if not callback_query.from_user or not await is_admin(callback_query.from_user.id) or not callback_query.message:
         text_obj = Text(MSG_ACCESS_DENIED)
         await callback_query.answer(text_obj.as_markdown(), show_alert=True)
         return

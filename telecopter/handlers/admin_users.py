@@ -38,11 +38,7 @@ admin_users_router = Router(name="admin_users_router")
 
 @admin_users_router.callback_query(F.data.startswith(f"{CALLBACK_USER_APPROVAL_TASK_ACTION_PREFIX}:"))
 async def handle_user_approval_action_from_task_cb(callback_query: CallbackQuery, bot: Bot):
-    if (
-        not callback_query.from_user
-        or not await is_admin(callback_query.from_user.id, bot)
-        or not callback_query.message
-    ):
+    if not callback_query.from_user or not await is_admin(callback_query.from_user.id) or not callback_query.message:
         text_obj = Text(MSG_ACCESS_DENIED)
         await callback_query.answer(text_obj.text, show_alert=True)
         return
