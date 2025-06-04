@@ -161,24 +161,6 @@ MSG_ADMIN_CONTEXT_ERROR_FOR_NOTE = "❗Error: Could not retrieve context for add
 MSG_ADMIN_ACTION_WITH_NOTE_PROCESSED = "✅ Action (with note) for request ID {request_id} processed: {log_message}"
 MSG_ADMIN_MODERATE_UPDATE_FALLBACK = "Update for request ID {request_id}: {log_message} (Note: {admin_note})"
 
-MSG_HELP_TITLE = "❓ How to Use Telecopter Bot:"
-MSG_HELP_NAVIGATION = "\n\nUse the main menu buttons to navigate:\n"
-MSG_HELP_REQUEST_MEDIA_ICON = "\n🎬 "
-MSG_HELP_REQUEST_MEDIA_TITLE = "Request Media:"
-MSG_HELP_REQUEST_MEDIA_DESC = " Find and request new movies or TV shows."
-MSG_HELP_MY_REQUESTS_ICON = "\n📊 "
-MSG_HELP_MY_REQUESTS_TITLE = "My Requests:"
-MSG_HELP_MY_REQUESTS_DESC = " Check the status of your past requests."
-MSG_HELP_REPORT_PROBLEM_ICON = "\n⚠️ "
-MSG_HELP_REPORT_PROBLEM_TITLE = "Report a Problem:"
-MSG_HELP_REPORT_PROBLEM_DESC = " Let us know if something is wrong."
-MSG_HELP_START_ANYTIME = "\n\nPress /start anytime to see the main menu."
-MSG_HELP_CANCEL_ACTION = "\nUse the 'Cancel' button in operations or from the main menu to stop any current action."
-MSG_HELP_ADMIN_INFO_ICON = "\n\n👑 "
-MSG_HELP_ADMIN_INFO_TITLE = "Admin Info:"
-MSG_HELP_ADMIN_INFO_DESC = (
-    " Access the admin panel via the /admin command or from the /start menu to manage tasks and send announcements."
-)
 
 MSG_MAIN_MENU_DEFAULT_WELCOME = "👋 Hello {user_first_name}! What can I help you with?"
 MSG_MAIN_MENU_MEDIA_SEARCH_UNAVAILABLE = "⚠️ Media search is currently unavailable. Please try again later."
@@ -339,7 +321,3 @@ ERR_PROBLEM_DESCRIPTION_TOO_SHORT = (
 MSG_NO_REQUESTS_YET = "🤷 you haven't made any requests or reports yet."
 MSG_NO_MORE_REQUESTS = "✅ no more requests found on page {page}."
 MSG_REQUESTS_PAGE_HEADER = "📖 your requests & reports (page {page} of {total_pages})"
-
-# Error messages
-ERR_UPDATE_REQUEST_LIST = "❗could not update the request list."
-ERR_GENERAL = "❗an error occurred."
