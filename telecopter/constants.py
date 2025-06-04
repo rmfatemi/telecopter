@@ -46,10 +46,10 @@ BTN_APPROVE_USER_ACTION = "✅ Approve User"
 BTN_BACK_TO_ADMIN_PANEL = "⬅️ Back to Admin Panel"
 BTN_BACK_TO_MAIN_MENU = "⬅️ Back to Main Menu"
 BTN_CANCEL_ACTION = "❌ Cancel Action"
-BTN_CONFIRM_REQUEST = "✅ yes, request it"
-BTN_CONFIRM_WITH_NOTE = "📝 yes, with a note"
+BTN_CONFIRM_REQUEST = "✅ Yes, request it"
+BTN_CONFIRM_WITH_NOTE = "📝 Yes, with a note"
 BTN_MAYBE_LATER = "⏱️ Maybe Later"
-BTN_MEDIA_MANUAL_REQUEST = "📝 other / not found - manual request"
+BTN_MEDIA_MANUAL_REQUEST = "📝 Other / not found - manual request"
 BTN_MOD_ACKNOWLEDGE = "👀 Acknowledge"
 BTN_MOD_APPROVE = "✅ Approve"
 BTN_MOD_APPROVE_W_NOTE = "📝 Approve w/ Note"
@@ -79,14 +79,14 @@ CMD_START_DESCRIPTION = "🏁 Start / Show Main Menu"
 
 # ERROR MESSAGES
 ERR_CALLBACK_INVALID_MEDIA_SELECTION = "❗ Oops! An error occurred. Please try searching again."
-ERR_MANUAL_REQUEST_TOO_SHORT = "✍️ your description is a bit short. please provide more details."
+ERR_MANUAL_REQUEST_TOO_SHORT = "✍️ Your description is a bit short. Please provide more details."
 ERR_MEDIA_DETAILS_FETCH_FAILED = "🔎❗ Sorry, I couldn't fetch details. Please try another selection or search again."
 ERR_MEDIA_QUERY_TOO_SHORT = "✍️ Your search query is too short. Please try a more specific name."
 ERR_PROBLEM_DESCRIPTION_TOO_SHORT = (
     "✍️ Your description seems a bit short. Please provide more details to help us understand the issue, or use the"
     " cancel button in the menu."
 )
-ERR_REQUEST_EXPIRED = "⏳ error: your selection seems to have expired. please start over."
+ERR_REQUEST_EXPIRED = "⏳ Error: Your selection seems to have expired. Please start over."
 
 # MSG_ACCESS & AUTHORIZATION
 MSG_ACCESS_DENIED = "Access denied."
@@ -157,7 +157,7 @@ MSG_MAIN_MENU_MEDIA_SEARCH_UNAVAILABLE = "⚠️ Media search is currently unava
 
 # MSG_MANUAL_REQUEST
 MSG_MANUAL_REQUEST_SUBMITTED = '✅ Your manual request for "{description}" has been submitted. Admins will review it.'
-MSG_MANUAL_REQUEST_SUCCESS = "✅ manual request submitted! what can i help you with next?"
+MSG_MANUAL_REQUEST_SUCCESS = "✅ Manual request submitted! What can I help you with next?"
 
 # MSG_MEDIA
 MSG_MEDIA_CONFIRM_REQUEST = "🎯 Confirm: Do you want to request this?"
@@ -173,8 +173,8 @@ MSG_NO_ACTIVE_OPERATION_ALERT = "No active operation."
 MSG_NO_ACTIVE_OPERATION_MENU = "🤷 No active operation to cancel. Here's the main menu:"
 MSG_NO_ADMIN_TASKS_OTHER_PAGE = "✅ No more tasks found on page {page}."
 MSG_NO_ADMIN_TASKS_PAGE_1 = "🎉 No pending tasks for admins at the moment!"
-MSG_NO_MORE_REQUESTS = "✅ no more requests found on page {page}."
-MSG_NO_REQUESTS_YET = "🤷 you haven't made any requests or reports yet."
+MSG_NO_MORE_REQUESTS = "✅ No more requests found on page {page}."
+MSG_NO_REQUESTS_YET = "🤷 You haven't made any requests or reports yet."
 MSG_NO_TASKS_INFO_TO_DISPLAY = "No tasks information to display."
 
 # MSG_PROBLEM_REPORT
@@ -185,18 +185,18 @@ MSG_REPORT_SUCCESS = "✅ Report submitted! What can I help you with next?"
 MSG_REQUESTS_PAGE_HEADER = "📖 Your requests & reports (page {page} of {total_pages})"
 
 # MSG_REQUEST
-MSG_REQUEST_SUBMITTED = "✅ Your request has been submitted for review. you'll be notified!"
-MSG_REQUEST_SUCCESS = "✅ Request submitted! what can i help you with next?"
+MSG_REQUEST_SUBMITTED = "✅ Your request has been submitted for review. You'll be notified!"
+MSG_REQUEST_SUCCESS = "✅ Request submitted! What can I help you with next?"
 MSG_REQUEST_WITH_NOTE_SUBMITTED = "✅ Your request with the note has been submitted. You'll be notified!"
 
 # MSG_SELECTION_EXPIRED
-MSG_SELECTION_EXPIRED = "⏳ selection expired. what can i help you with next?"
+MSG_SELECTION_EXPIRED = "⏳ Selection expired. What can I help you with next?"
 
 # MSG_START
 MSG_START_PENDING_APPROVAL = (
-    "👋 Hello {user_name}, your account is still pending approval. You'll be notified once it's reviewed."
+    "👋 Hello {user_name}, Your account is still pending approval. You'll be notified once it's reviewed."
 )
-MSG_START_REJECTED = "😕 Hello {user_name}, access to this bot has not been granted to your account."
+MSG_START_REJECTED = "😕 Hello {user_name}, Access to this bot has not been granted to your account."
 MSG_START_UNEXPECTED_STATUS_ERROR = "An unexpected error occurred with your account status. Please try again later."
 MSG_START_WELCOME_NEW_PROMPT = (
     "👋 Welcome, {user_name}! To use this bot, you need to request access from an administrator. Would you like"
@@ -258,7 +258,7 @@ PROMPT_ADMIN_NOTE_FOR_REQUEST = (
 PROMPT_MAIN_MENU_REQUEST_MEDIA = "✍️ What movie or TV show are you looking for? Please type the name below."
 
 # PROMPT_MANUAL_REQUEST
-PROMPT_MANUAL_REQUEST = "✍️ please provide a description for your manual request."
+PROMPT_MANUAL_REQUEST = "✍️ Please provide a description for your manual request."
 PROMPT_MANUAL_REQUEST_DESCRIPTION = (
     "✍️ Okay, you chose 'Other / Not Found'. Please describe the media you're looking for (e.g., title, year, any"
     ' details). Your original search term was: "{original_query}". This will be sent as a manual request.'
@@ -274,7 +274,7 @@ PROMPT_PROBLEM_DESCRIPTION = (
 PROMPT_PROBLEM_DESCRIPTION_RETRY = "✍️ Please type your problem description, or use the cancel button in the menu."
 
 # PROMPT_REQUEST_NOTE
-PROMPT_REQUEST_NOTE = "📝 please send a short note for your request."
+PROMPT_REQUEST_NOTE = "📝 Please send a short note for your request."
 
 # TITLES
 TITLE_ADMIN_PANEL = "👑 Admin Panel"
