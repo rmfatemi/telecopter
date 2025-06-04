@@ -1,18 +1,29 @@
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict, Any
 
 from aiogram.utils.formatting import Text, Bold, Italic, TextLink, Code, as_list
 
 from telecopter.logger import setup_logger
 from telecopter.config import TMDB_MOVIE_URL_BASE, TMDB_TV_URL_BASE, IMDB_TITLE_URL_BASE
-
+from telecopter.constants import (
+    MEDIA_TYPE_MOVIE,
+    MEDIA_TYPE_TV,
+    MEDIA_TYPE_MANUAL,
+    REQUEST_TYPE_USER_APPROVAL,
+    ICON_MOVIE,
+    ICON_TV_SHOW,
+    ICON_MANUAL_REQUEST,
+    ICON_PROBLEM_REPORT,
+    ICON_USER_APPROVAL,
+    ICON_GENERIC_REQUEST,
+)
 
 logger = setup_logger(__name__)
 
 
 def make_tmdb_url(tmdb_id: int, media_type: str) -> Optional[str]:
-    if media_type == "movie":
+    if media_type == MEDIA_TYPE_MOVIE:
         return f"{TMDB_MOVIE_URL_BASE}{tmdb_id}"
-    elif media_type == "tv":
+    elif media_type == MEDIA_TYPE_TV:
         return f"{TMDB_TV_URL_BASE}{tmdb_id}"
     logger.warning("unsupported media type '%s' for tmdb url generation.", media_type)
     return None
@@ -33,23 +44,28 @@ def truncate_text(text: str, max_length: int, ellipsis: str = "...") -> str:
     return text
 
 
-def format_media_details_for_user(details: dict, for_admin_notification: bool = False) -> Text:
+def format_media_details_for_user(details: Dict, for_admin_notification: bool = False) -> Text:
     if not details:
-        return Text("error: could not retrieve media details.")
+        return Text("Error: Could not retrieve media details.")
 
-    title_str = details.get("title", "n/a")
+    title_str = details.get("title", "N/A")
     year = details.get("year")
     year_str = f" ({year})" if year else ""
 
-    media_type_display = "movie" if details.get("media_type") == "movie" else "tv show"
-    overview_max_len = 300 if for_admin_notification else 500
+    media_type = details.get("media_type")
+    media_type_icon_and_name_str = ""
+    if media_type == MEDIA_TYPE_MOVIE:
+        media_type_icon_and_name_str = f"{ICON_MOVIE} Movie"
+    elif media_type == MEDIA_TYPE_TV:
+        media_type_icon_and_name_str = f"{ICON_TV_SHOW} TV Show"
 
-    overview_content = details.get("overview", "no synopsis available.")
+    overview_max_len = 300 if for_admin_notification else 500
+    overview_content = details.get("overview", "No synopsis available.")
     overview_text = Text(truncate_text(overview_content, overview_max_len))
 
     content_elements: list[Union[Text, Bold, Italic, TextLink]] = [
         Bold(f"{title_str}{year_str}"),
-        Text(f" ({media_type_display})\n"),
+        Text(f" ({media_type_icon_and_name_str})\n" if media_type_icon_and_name_str else "\n"),
         overview_text,
     ]
 
@@ -58,7 +74,7 @@ def format_media_details_for_user(details: dict, for_admin_notification: bool = 
     if "tmdb_id" in details and "media_type" in details:
         tmdb_url = make_tmdb_url(details["tmdb_id"], details["media_type"])
         if tmdb_url:
-            links.append(TextLink("view on tmdb", url=tmdb_url))
+            links.append(TextLink("View on TMDB", url=tmdb_url))
 
     imdb_id_val = details.get("imdb_id")
     if imdb_id_val:
@@ -66,7 +82,7 @@ def format_media_details_for_user(details: dict, for_admin_notification: bool = 
         if imdb_url:
             if links:
                 links.append(Text(" | "))
-            links.append(TextLink("view on imdb", url=imdb_url))
+            links.append(TextLink("View on IMDB", url=imdb_url))
 
     if links:
         content_elements.append(Text("\n"))
@@ -75,17 +91,17 @@ def format_media_details_for_user(details: dict, for_admin_notification: bool = 
     return Text(*content_elements)
 
 
-def format_request_for_admin(request_data: dict, user_info: Optional[dict] = None) -> Text:
+def format_request_for_admin(request_data: Dict, user_info: Optional[Dict] = None) -> Text:
     req_id = request_data["request_id"]
     req_type = request_data["request_type"]
     req_title_raw = request_data["title"]
     req_status_raw = request_data["status"]
-    user_query_raw = request_data.get("user_query", "n/a")
-    user_note_raw = request_data.get("user_note", "n/a")
+    user_query_raw = request_data.get("user_query", "N/A")
+    user_note_raw = request_data.get("user_note", "N/A")
 
     user_display_elements: List[Union[Text, Code, TextLink]]
     if user_info:
-        user_fn = user_info.get("first_name", "user")
+        user_fn = user_info.get("first_name")
         user_username = user_info.get("username")
         user_id = user_info["user_id"]
 
@@ -94,42 +110,138 @@ def format_request_for_admin(request_data: dict, user_info: Optional[dict] = Non
         elif user_fn:
             user_display_elements = [Text(user_fn), Text(" (ID: "), Code(str(user_id)), Text(")")]
         else:
-            user_display_elements = [Text("User (id: "), Code(str(user_id)), Text(")")]
+            user_display_elements = [Text("User (ID: "), Code(str(user_id)), Text(")")]
     else:
-        user_display_elements = [Text("Unknown user")]
+        user_display_elements = [Italic("Unknown user")]
+
+    req_type_icon_str: str
+    req_type_display_name: str
+
+    if req_type == MEDIA_TYPE_MOVIE:
+        req_type_icon_str = ICON_MOVIE
+        req_type_display_name = "Movie"
+    elif req_type == MEDIA_TYPE_TV:
+        req_type_icon_str = ICON_TV_SHOW
+        req_type_display_name = "TV Show"
+    elif req_type == MEDIA_TYPE_MANUAL:
+        req_type_icon_str = ICON_MANUAL_REQUEST
+        req_type_display_name = "Manual Request"
+    elif req_type == "problem":
+        req_type_icon_str = ICON_PROBLEM_REPORT
+        req_type_display_name = "Problem Report"
+    elif req_type == REQUEST_TYPE_USER_APPROVAL:
+        req_type_icon_str = ICON_USER_APPROVAL
+        req_type_display_name = "User Approval"
+    else:
+        req_type_icon_str = ICON_GENERIC_REQUEST
+        req_type_display_name = req_type.replace("_", " ").title() if req_type else "Unknown Type"
 
     message_items: List[Union[Text, Bold, Italic, Code, TextLink]] = [
         Bold("New Request Notification"),
         Text(Bold("Request ID:"), " ", Code(str(req_id))),
         Text(Bold("User:"), " ", *user_display_elements),
-        Text(Bold("Type:"), " ", Text(req_type)),
-        Text(Bold("Title/Summary:"), " ", Text(req_title_raw)),
+        Text(Bold("Type:"), " ", req_type_icon_str, " ", req_type_display_name),
+        Text(Bold("Title/Summary:"), " ", Italic(req_title_raw)),
     ]
 
-    if req_type in ["movie", "tv"]:
-        year = request_data.get("year")
-        if year:
-            message_items.append(Text(Bold("Year:"), " ", Text(str(year))))
+    if req_type in [MEDIA_TYPE_MOVIE, MEDIA_TYPE_TV, MEDIA_TYPE_MANUAL]:
+        year_val = request_data.get("year")
+        if year_val:
+            message_items.append(Text(Bold("Year:"), " ", Text(str(year_val))))
 
-        tmdb_id = request_data.get("tmdb_id")
-
-        if tmdb_id is not None:
-            tmdb_url = make_tmdb_url(tmdb_id, req_type)
+        tmdb_id_val = request_data.get("tmdb_id")
+        if tmdb_id_val is not None and req_type in [MEDIA_TYPE_MOVIE, MEDIA_TYPE_TV]:
+            tmdb_url = make_tmdb_url(tmdb_id_val, req_type)
             if tmdb_url:
-                message_items.append(Text(Bold("TMDB:"), " ", TextLink("link", url=tmdb_url)))
+                message_items.append(Text(Bold("TMDB:"), " ", TextLink("Link", url=tmdb_url)))
 
         imdb_id_val = request_data.get("imdb_id")
         if imdb_id_val:
             imdb_url = make_imdb_url(imdb_id_val)
             if imdb_url:
-                message_items.append(Text(Bold("IMDB:"), " ", TextLink("link", url=imdb_url)))
+                message_items.append(Text(Bold("IMDB:"), " ", TextLink("Link", url=imdb_url)))
 
-        if user_query_raw and user_query_raw != "n/a":
-            message_items.append(Text(Bold("User query:"), " ", Code(user_query_raw)))
+        if user_query_raw and user_query_raw != "N/A":
+            message_items.append(Text(Bold("User Query:"), " ", Code(user_query_raw)))
 
-    if user_note_raw and user_note_raw != "n/a":
-        message_items.append(Text(Bold("User note:"), " ", Italic(user_note_raw)))
+    if user_note_raw and user_note_raw != "N/A":
+        message_items.append(Text(Bold("User Note:"), " ", Italic(user_note_raw)))
 
-    message_items.append(Text(Bold("Status:"), " ", Text(req_status_raw)))
+    message_items.append(Text(Bold("Status:"), " ", Italic(req_status_raw)))
 
     return as_list(*message_items, sep="\n\n")
+
+
+def format_request_item_display_parts(
+        request_data: Dict[str, Any],
+        view_context: str,
+        submitter_name_override: Optional[str] = None
+) -> List[Union[Text, Bold, Italic, Code]]:
+    req_id = request_data.get("request_id")
+    req_type = request_data["request_type"]
+    req_title = request_data.get("title", "N/A")
+    req_status = request_data.get("status", "N/A")
+    created_at_raw = request_data.get("created_at")
+    created_date = str(created_at_raw)[:10] if isinstance(created_at_raw, str) else "Unknown Date"
+    task_user_id = request_data.get("user_id")
+
+    item_icon_str: str
+    request_type_display_str: str
+
+    if req_type == MEDIA_TYPE_MOVIE:
+        item_icon_str = ICON_MOVIE
+        request_type_display_str = "Movie"
+    elif req_type == MEDIA_TYPE_TV:
+        item_icon_str = ICON_TV_SHOW
+        request_type_display_str = "TV Show"
+    elif req_type == MEDIA_TYPE_MANUAL:
+        item_icon_str = ICON_MANUAL_REQUEST
+        request_type_display_str = "Manual Request"
+    elif req_type == "problem":
+        item_icon_str = ICON_PROBLEM_REPORT
+        request_type_display_str = "Problem Report"
+    elif req_type == REQUEST_TYPE_USER_APPROVAL:
+        item_icon_str = ICON_USER_APPROVAL
+        request_type_display_str = "User Approval"
+    else:
+        item_icon_str = ICON_GENERIC_REQUEST
+        request_type_display_str = req_type.replace("_", " ").title() if req_type else "Task"
+
+    display_parts: List[Union[Text, Bold, Italic, Code]] = []
+
+    if view_context == "admin_list_item" and req_type == REQUEST_TYPE_USER_APPROVAL:
+        display_parts.append(Text(item_icon_str, " ", Bold(request_type_display_str)))
+        display_parts.append(Text("\n", Bold("Details: "), Italic(truncate_text(req_title, 60))))
+        if req_id:
+            display_parts.append(Text("\n", Bold("Task ID: "), Code(str(req_id))))
+    else:
+        display_parts.append(Text(item_icon_str, " ", Bold(request_type_display_str)))
+        title_trunc_length = 40 if view_context == "admin_list_item" else 50
+        display_parts.append(Text("\n", Bold("Title: "), Italic(truncate_text(req_title, title_trunc_length))))
+        if view_context == "admin_list_item" and req_id:
+            display_parts.append(Text("\n", Bold("ID: "), Code(str(req_id))))
+
+    display_parts.append(Text("\n", Bold("Status: "), Italic(req_status)))
+
+    date_label = "Requested" if view_context == "user_history_item" else "On"
+    display_parts.append(Text("\n", Bold(f"{date_label}: "), created_date))
+
+    if view_context == "admin_list_item":
+        if submitter_name_override:
+            display_parts.append(Text("\n", Bold("By: "), submitter_name_override))
+        elif task_user_id:
+            display_parts.append(Text("\n", Bold("By User ID: "), Code(str(task_user_id))))
+
+    user_note = request_data.get("user_note")
+    admin_note = request_data.get("admin_note")
+    note_trunc_len = 70
+
+    if user_note and view_context == "admin_list_item":  # Admin sees user note
+        display_parts.append(Text("\n", Bold("User Note: "), Italic(truncate_text(user_note, note_trunc_len))))
+    elif user_note and view_context == "user_history_item":  # User sees their own note
+        display_parts.append(Text("\n", Bold("Your Note: "), Italic(truncate_text(user_note, note_trunc_len))))
+
+    if view_context == "user_history_item" and admin_note:
+        display_parts.append(Text("\n", Bold("Admin Note: "), Italic(truncate_text(admin_note, note_trunc_len))))
+
+    return display_parts
