@@ -169,7 +169,7 @@ def format_request_for_admin(request_data: Dict, user_info: Optional[Dict] = Non
 
     message_items.append(Text(Bold("Status:"), " ", Italic(req_status_raw)))
 
-    return as_list(*message_items, sep="\n\n")
+    return as_list(*message_items, sep="\n")
 
 
 def format_request_item_display_parts(
