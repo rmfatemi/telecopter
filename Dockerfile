@@ -7,7 +7,7 @@ RUN apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev && \
     pip install --upgrade pip && \
     pip install poetry
 
-    COPY pyproject.toml poetry.lock README.md ./
+    COPY pyproject.toml poetry.lock* README.md ./
 
 COPY telecopter ./telecopter
 
