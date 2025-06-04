@@ -11,7 +11,18 @@ import telecopter.database as db
 from telecopter.utils import truncate_text
 from telecopter.logger import setup_logger
 from telecopter.config import DEFAULT_PAGE_SIZE
-
+from telecopter.constants import (
+    BTN_PREVIOUS_PAGE,
+    BTN_NEXT_PAGE,
+    BTN_REQUEST_MEDIA,
+    BTN_REPORT_PROBLEM,
+    BTN_BACK_TO_MAIN_MENU,
+    MSG_NO_REQUESTS_YET,
+    MSG_NO_MORE_REQUESTS,
+    MSG_REQUESTS_PAGE_HEADER,
+    ERR_UPDATE_REQUEST_LIST,
+    ERR_GENERAL,
+)
 
 logger = setup_logger(__name__)
 
@@ -21,9 +32,9 @@ request_history_router = Router(name="request_history_router")
 def get_my_requests_pagination_keyboard(page: int, total_pages: int) -> Optional[InlineKeyboardMarkup]:
     builder = InlineKeyboardBuilder()
     if page > 1:
-        builder.button(text="⬅️ previous", callback_data=f"my_req_page:{page - 1}")
+        builder.button(text=BTN_PREVIOUS_PAGE, callback_data=f"my_req_page:{page - 1}")
     if page < total_pages:
-        builder.button(text="next ➡️", callback_data=f"my_req_page:{page + 1}")
+        builder.button(text=BTN_NEXT_PAGE, callback_data=f"my_req_page:{page + 1}")
     if builder.buttons:
         builder.adjust(2)
         return builder.as_markup()
@@ -79,16 +90,16 @@ async def _send_my_requests_page_logic(
     final_keyboard_builder = InlineKeyboardBuilder()
 
     if not requests_rows and page == 1:
-        page_content_elements.append(Text("🤷 you haven't made any requests or reports yet."))
-        final_keyboard_builder.button(text="🎬 request media", callback_data="main_menu:request_media")
-        final_keyboard_builder.button(text="⚠️ report a problem", callback_data="main_menu:report_problem")
+        page_content_elements.append(Text(MSG_NO_REQUESTS_YET))
+        final_keyboard_builder.button(text=BTN_REQUEST_MEDIA, callback_data="main_menu:request_media")
+        final_keyboard_builder.button(text=BTN_REPORT_PROBLEM, callback_data="main_menu:report_problem")
         final_keyboard_builder.adjust(1)
     elif not requests_rows and page > 1:
-        page_content_elements.append(Text(f"✅ no more requests found on page {page}."))
+        page_content_elements.append(Text(MSG_NO_MORE_REQUESTS.format(page=page)))
         if page > 1:
-            final_keyboard_builder.button(text="⬅️ previous", callback_data=f"my_req_page:{page - 1}")
+            final_keyboard_builder.button(text=BTN_PREVIOUS_PAGE, callback_data=f"my_req_page:{page - 1}")
     else:
-        page_content_elements.append(Bold(f"📖 your requests & reports (page {page} of {total_pages})"))
+        page_content_elements.append(Bold(MSG_REQUESTS_PAGE_HEADER.format(page=page, total_pages=total_pages)))
         page_content_elements.append(Text("\n"))
 
         for req_row in requests_rows:
@@ -118,12 +129,12 @@ async def _send_my_requests_page_logic(
                 final_keyboard_builder.row(*row_buttons)
 
     final_keyboard_builder.row(
-        InlineKeyboardButton(text="⬅️ back to main menu", callback_data="main_menu:show_start_menu_from_my_requests")
+        InlineKeyboardButton(text=BTN_BACK_TO_MAIN_MENU, callback_data="main_menu:show_start_menu_from_my_requests")
     )
 
     keyboard_to_show = final_keyboard_builder.as_markup()
     final_text_object = (
-        as_list(*page_content_elements, sep="\n") if page_content_elements else Text("🤷 no requests to display.")
+        as_list(*page_content_elements, sep="\n") if page_content_elements else Text(MSG_NO_REQUESTS_YET)
     )
     text_to_send = final_text_object.as_markdown()
 
@@ -146,14 +157,14 @@ async def _send_my_requests_page_logic(
         else:
             logger.error("telegram badrequest in _send_my_requests_page_logic: %s", e)
             if is_callback and chat_id:
-                error_reply_obj = Text("❗could not update the request list.")
+                error_reply_obj = Text(ERR_UPDATE_REQUEST_LIST)
                 await bot.send_message(
                     chat_id, error_reply_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=keyboard_to_show
                 )
     except Exception as e:
         logger.error("exception in _send_my_requests_page_logic: %s", e)
         if is_callback and chat_id:
-            error_reply_obj = Text("❗an error occurred.")
+            error_reply_obj = Text(ERR_GENERAL)
             await bot.send_message(
                 chat_id, error_reply_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=keyboard_to_show
             )

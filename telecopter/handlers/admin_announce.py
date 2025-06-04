@@ -10,19 +10,28 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardButton
 import telecopter.database as db
 from telecopter.logger import setup_logger
 from telecopter.handlers.handler_states import AdminAnnounceStates
-
+from telecopter.constants import (
+    PROMPT_ADMIN_ANNOUNCE_TYPE,
+    MSG_ADMIN_ANNOUNCE_CANCELLED,
+    PROMPT_ADMIN_ANNOUNCE_TYPING_MESSAGE,
+    MSG_ADMIN_ANNOUNCE_NO_USERS,
+    MSG_ADMIN_ANNOUNCE_SENT_CONFIRM,
+    MSG_ADMIN_ANNOUNCE_FAILURES_SUFFIX,
+    BTN_ANNOUNCE_UNMUTED,
+    BTN_ANNOUNCE_MUTED,
+    BTN_ANNOUNCE_CANCEL,
+)
 
 logger = setup_logger(__name__)
 
 admin_announce_router = Router(name="admin_announce_router")
 
-
 ANNOUNCE_TYPE_KEYBOARD = (
     InlineKeyboardBuilder()
     .add(
-        InlineKeyboardButton(text="🔊 unmuted", callback_data="announce_type:unmuted"),
-        InlineKeyboardButton(text="🤫 muted", callback_data="announce_type:muted"),
-        InlineKeyboardButton(text="❌ cancel", callback_data="announce_type:cancel_to_panel"),
+        InlineKeyboardButton(text=BTN_ANNOUNCE_UNMUTED, callback_data="announce_type:unmuted"),
+        InlineKeyboardButton(text=BTN_ANNOUNCE_MUTED, callback_data="announce_type:muted"),
+        InlineKeyboardButton(text=BTN_ANNOUNCE_CANCEL, callback_data="announce_type:cancel_to_panel"),
     )
     .adjust(2, 1)
     .as_markup()
@@ -31,7 +40,7 @@ ANNOUNCE_TYPE_KEYBOARD = (
 
 async def ask_announcement_type(message_event: Message, state: FSMContext, bot: Bot):
     await state.set_state(AdminAnnounceStates.choosing_type)
-    text_obj = Text("📢 choose announcement type:")
+    text_obj = Text(PROMPT_ADMIN_ANNOUNCE_TYPE)
     try:
         if hasattr(message_event, "edit_text") and message_event.message_id:
             await message_event.edit_text(
@@ -69,7 +78,7 @@ async def process_announcement_type_cb(callback_query: CallbackQuery, state: FSM
         if callback_query.message:
             try:
                 await callback_query.message.edit_text(
-                    Text("announcement cancelled.").as_markdown(), parse_mode="MarkdownV2"
+                    Text(MSG_ADMIN_ANNOUNCE_CANCELLED).as_markdown(), parse_mode="MarkdownV2"
                 )
             except Exception:
                 logger.debug("could not edit message for announcement cancel")
@@ -80,10 +89,8 @@ async def process_announcement_type_cb(callback_query: CallbackQuery, state: FSM
     await state.update_data(is_muted=is_muted)
     await state.set_state(AdminAnnounceStates.typing_message)
 
-    prompt_text_str = (
-        f"✍️ please type your {'muted' if is_muted else 'unmuted'} announcement message below.\nyou can cancel from the"
-        " admin panel if you return via /start."
-    )
+    muted_status = "muted" if is_muted else "unmuted"
+    prompt_text_str = PROMPT_ADMIN_ANNOUNCE_TYPING_MESSAGE.format(muted_status=muted_status)
     prompt_text_obj = Text(prompt_text_str)
     if callback_query.message:
         await callback_query.message.edit_text(prompt_text_obj.as_markdown(), parse_mode="MarkdownV2")
@@ -102,14 +109,14 @@ async def process_announcement_message_text(message: Message, state: FSMContext,
     await state.clear()
 
     formatted_announcement_content = Text(
-        Bold("📢 announcement from admin:"), "\n\n", Text(announcement_text_from_admin)
+        Bold("📢 Announcement from admin:"), "\n\n", Text(announcement_text_from_admin)
     )
     final_message_to_send_md = formatted_announcement_content.as_markdown()
 
     chat_ids = await db.get_all_user_chat_ids()
     admin_user_id = message.from_user.id
     if not chat_ids:
-        response_text_obj = Text("👥 no registered users found to send announcement to.")
+        response_text_obj = Text(MSG_ADMIN_ANNOUNCE_NO_USERS)
         await message.reply(response_text_obj.as_markdown(), parse_mode="MarkdownV2")
         await show_admin_panel(message, bot)
         return
@@ -129,9 +136,9 @@ async def process_announcement_message_text(message: Message, state: FSMContext,
             failed_count += 1
         await asyncio.sleep(0.05)
 
-    response_text_str = f"✅ announcement sent to {sent_count} users."
+    response_text_str = MSG_ADMIN_ANNOUNCE_SENT_CONFIRM.format(sent_count=sent_count)
     if failed_count > 0:
-        response_text_str += f" {failed_count} failures."
+        response_text_str += MSG_ADMIN_ANNOUNCE_FAILURES_SUFFIX.format(failed_count=failed_count)
     response_text_obj = Text(response_text_str)
     await message.reply(response_text_obj.as_markdown(), parse_mode="MarkdownV2")
 

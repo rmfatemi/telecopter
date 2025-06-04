@@ -13,7 +13,47 @@ from telecopter.utils import truncate_text
 from telecopter.config import MAX_NOTE_LENGTH
 from telecopter.handlers.common_utils import is_admin
 from telecopter.handlers.handler_states import AdminInteractionStates
-
+from telecopter.constants import (
+    MSG_ADMIN_ONLY_ACTION,
+    MSG_ERROR_UNEXPECTED,
+    MSG_ADMIN_TASK_CLOSED_IN_VIEW,
+    MSG_ADMIN_REQUEST_NOT_FOUND,
+    MSG_ADMIN_CONTEXT_ERROR_FOR_NOTE,
+    MSG_ADMIN_ACTION_WITH_NOTE_PROCESSED,
+    MSG_ADMIN_MODERATE_UPDATE_FALLBACK,
+    BTN_MOD_APPROVE,
+    BTN_MOD_APPROVE_W_NOTE,
+    BTN_MOD_DENY,
+    BTN_MOD_DENY_W_NOTE,
+    BTN_MOD_MARK_COMPLETED,
+    BTN_MOD_COMPLETE_W_NOTE,
+    BTN_MOD_SHELVING_DECISION,
+    BTN_MOD_ACKNOWLEDGE,
+    BTN_MOD_MARK_RESOLVED,
+    BTN_MOD_RESOLVE_W_NOTE,
+    PROMPT_ADMIN_NOTE_FOR_REQUEST,
+    MSG_USER_REQUEST_APPROVED,
+    MSG_USER_REQUEST_APPROVED_WITH_NOTE,
+    MSG_USER_REQUEST_DENIED,
+    MSG_USER_PROBLEM_RESOLVED,
+    MSG_USER_PROBLEM_RESOLVED_WITH_NOTE,
+    MSG_USER_REQUEST_COMPLETED,
+    MSG_USER_REQUEST_COMPLETED_WITH_NOTE,
+    MSG_USER_PROBLEM_ACKNOWLEDGED,
+    MSG_ADMIN_ACTION_ERROR,
+    MSG_ADMIN_ACTION_SUCCESS,
+    MSG_ADMIN_ACTION_SUCCESS_WITH_NOTE,
+    MSG_ADMIN_ACTION_NOTIFICATION_FAILED,
+    MSG_ADMIN_ACTION_USER_NOT_FOUND,
+    MSG_ADMIN_ACTION_DB_UPDATE_FAILED,
+    MSG_ADMIN_ACTION_DB_UPDATE_FAILED_WITH_NOTE,
+    MSG_ADMIN_ACTION_UNKNOWN_STATUS,
+    MSG_ADMIN_ACTION_UNKNOWN,
+    MSG_ADMIN_ACTION_TAKEN_BY,
+    MSG_ADMIN_ACTION_TAKEN_SUFFIX,
+    MSG_ADMIN_NOTE_LABEL,
+    MSG_ADMIN_MESSAGE_DIVIDER,
+)
 
 logger = setup_logger(__name__)
 
@@ -22,23 +62,23 @@ admin_moderate_router = Router(name="admin_moderate_router")
 
 def get_admin_request_action_keyboard(request_id: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text="✅ approve", callback_data=f"admin_act:approve:{request_id}")
-    builder.button(text="📝 approve w/ note", callback_data=f"admin_act:approve_with_note:{request_id}")
-    builder.button(text="❌ deny", callback_data=f"admin_act:deny:{request_id}")
-    builder.button(text="📝 deny w/ note", callback_data=f"admin_act:deny_with_note:{request_id}")
-    builder.button(text="🏁 mark completed", callback_data=f"admin_act:complete:{request_id}")
-    builder.button(text="📝 complete w/ note", callback_data=f"admin_act:complete_with_note:{request_id}")
-    builder.button(text="shelving_decision", callback_data=f"admin_act:close_task:{request_id}")
+    builder.button(text=BTN_MOD_APPROVE, callback_data=f"admin_act:approve:{request_id}")
+    builder.button(text=BTN_MOD_APPROVE_W_NOTE, callback_data=f"admin_act:approve_with_note:{request_id}")
+    builder.button(text=BTN_MOD_DENY, callback_data=f"admin_act:deny:{request_id}")
+    builder.button(text=BTN_MOD_DENY_W_NOTE, callback_data=f"admin_act:deny_with_note:{request_id}")
+    builder.button(text=BTN_MOD_MARK_COMPLETED, callback_data=f"admin_act:complete:{request_id}")
+    builder.button(text=BTN_MOD_COMPLETE_W_NOTE, callback_data=f"admin_act:complete_with_note:{request_id}")
+    builder.button(text=BTN_MOD_SHELVING_DECISION, callback_data=f"admin_act:close_task:{request_id}")
     builder.adjust(2, 2, 2, 1)
     return builder.as_markup()
 
 
 def get_admin_report_action_keyboard(request_id: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text="👀 acknowledge", callback_data=f"admin_act:acknowledge:{request_id}")
-    builder.button(text="🛠️ mark resolved", callback_data=f"admin_act:complete:{request_id}")
-    builder.button(text="📝 resolve w/ note", callback_data=f"admin_act:complete_with_note:{request_id}")
-    builder.button(text="shelving_decision", callback_data=f"admin_act:close_task:{request_id}")
+    builder.button(text=BTN_MOD_ACKNOWLEDGE, callback_data=f"admin_act:acknowledge:{request_id}")
+    builder.button(text=BTN_MOD_MARK_RESOLVED, callback_data=f"admin_act:complete:{request_id}")
+    builder.button(text=BTN_MOD_RESOLVE_W_NOTE, callback_data=f"admin_act:complete_with_note:{request_id}")
+    builder.button(text=BTN_MOD_SHELVING_DECISION, callback_data=f"admin_act:close_task:{request_id}")
     builder.adjust(1, 1, 1, 1)
     return builder.as_markup()
 
@@ -56,38 +96,41 @@ async def _perform_moderation_action_and_notify(
     user_notification_text_template: Optional[str] = None
 
     if new_status == "approved":
-        user_notification_text_template = 'great news! 🎉 your request for "{title}" has been approved.'
         if admin_note:
-            user_notification_text_template = (
-                'great news! 🎉 your request for "{title}" has been approved by the admin.'
-            )
+            user_notification_text_template = MSG_USER_REQUEST_APPROVED_WITH_NOTE
+        else:
+            user_notification_text_template = MSG_USER_REQUEST_APPROVED
     elif new_status == "denied":
-        user_notification_text_template = '📑 regarding your request for "{title}", the admin has denied it.'
+        user_notification_text_template = MSG_USER_REQUEST_DENIED
     elif new_status == "completed":
         if original_request_type == "problem":
-            user_notification_text_template = '🛠️ update: your problem report "{title}" has been marked as resolved.'
             if admin_note:
-                user_notification_text_template = (
-                    '🛠️ update: your problem report "{title}" has been marked as resolved by the admin.'
-                )
+                user_notification_text_template = MSG_USER_PROBLEM_RESOLVED_WITH_NOTE
+            else:
+                user_notification_text_template = MSG_USER_PROBLEM_RESOLVED
         else:
-            user_notification_text_template = '✅ update: your request for "{title}" is now completed and available!'
             if admin_note:
-                user_notification_text_template = (
-                    '✅ update: your request for "{title}" has been completed by the admin.'
-                )
+                user_notification_text_template = MSG_USER_REQUEST_COMPLETED_WITH_NOTE
+            else:
+                user_notification_text_template = MSG_USER_REQUEST_COMPLETED
     elif new_status == "acknowledged":
-        user_notification_text_template = '👀 update: your problem report "{title}" has been acknowledged by the admin.'
+        user_notification_text_template = MSG_USER_PROBLEM_ACKNOWLEDGED
 
-    admin_confirm_message_core = f"❗unexpected error processing request {request_id}"
+    admin_confirm_message_core = MSG_ADMIN_ACTION_ERROR.format(request_id=request_id)
 
     if user_notification_text_template:
         db_update_successful = await db.update_request_status(request_id, new_status, admin_note=admin_note)
         if db_update_successful:
-            admin_confirm_message_core = f"request id {request_id} status set to {new_status}"
             if admin_note:
-                admin_confirm_message_core += " with note"
-            admin_confirm_message_core += ". user notified."
+                admin_confirm_message_core = MSG_ADMIN_ACTION_SUCCESS_WITH_NOTE.format(
+                    request_id=request_id, new_status=new_status
+                )
+            else:
+                admin_confirm_message_core = MSG_ADMIN_ACTION_SUCCESS.format(
+                    request_id=request_id, new_status=new_status
+                )
+
+            admin_confirm_message_core += ". User notified."
 
             await db.log_admin_action(
                 acting_admin_user_id, action_key_for_log, request_id=request_id, details=admin_note
@@ -98,22 +141,27 @@ async def _perform_moderation_action_and_notify(
                 user_msg_str = user_notification_text_template.format(title=original_request_title)
                 user_msg_obj_parts = [Text(user_msg_str)]
                 if admin_note:
-                    user_msg_obj_parts.extend(["\n\n", Bold("admin's note:"), " ", Italic(admin_note)])
+                    user_msg_obj_parts.extend(["\n\n", Bold(MSG_ADMIN_NOTE_LABEL), " ", Italic(admin_note)])
                 user_msg_obj = Text(*user_msg_obj_parts)
                 try:
                     await bot.send_message(submitter_chat_id, text=user_msg_obj.as_markdown(), parse_mode="MarkdownV2")
                 except Exception as e:
                     logger.error("failed to send status update to user for request %s: %s", request_id, e)
-                    admin_confirm_message_core += " (user notification failed)"
+                    admin_confirm_message_core += MSG_ADMIN_ACTION_NOTIFICATION_FAILED
             else:
-                admin_confirm_message_core += " (user chat_id not found)"
+                admin_confirm_message_core += MSG_ADMIN_ACTION_USER_NOT_FOUND
         else:
-            admin_confirm_message_core = f"❗failed to update db status for request id {request_id} to {new_status}"
             if admin_note:
-                admin_confirm_message_core += " with note"
+                admin_confirm_message_core = MSG_ADMIN_ACTION_DB_UPDATE_FAILED_WITH_NOTE.format(
+                    request_id=request_id, new_status=new_status
+                )
+            else:
+                admin_confirm_message_core = MSG_ADMIN_ACTION_DB_UPDATE_FAILED.format(
+                    request_id=request_id, new_status=new_status
+                )
     else:
-        admin_confirm_message_core = (
-            f"❗unknown new_status '{new_status}' or missing template for request id {request_id}"
+        admin_confirm_message_core = MSG_ADMIN_ACTION_UNKNOWN_STATUS.format(
+            new_status=new_status, request_id=request_id
         )
 
     return admin_confirm_message_core
@@ -134,7 +182,7 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
         if callback_query.message.chat:
             await bot.send_message(
                 callback_query.message.chat.id,
-                Text("⛔ this action is admin-only.").as_markdown(),
+                Text(MSG_ADMIN_ONLY_ACTION).as_markdown(),
                 parse_mode="MarkdownV2",
             )
         return
@@ -148,7 +196,7 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
     except (IndexError, ValueError):
         logger.error("invalid admin action callback data: %s", callback_query.data)
         if callback_query.message:
-            error_text_obj = Text("❗sorry, an unexpected error occurred. please try again later.")
+            error_text_obj = Text(MSG_ERROR_UNEXPECTED)
             await callback_query.message.edit_text(
                 error_text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None
             )
@@ -157,7 +205,7 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
     if action_full_key == "close_task":
         try:
             if callback_query.message:
-                text_obj = Text(f"task id {request_id} closed in this view.")
+                text_obj = Text(MSG_ADMIN_TASK_CLOSED_IN_VIEW.format(request_id=request_id))
                 await callback_query.message.edit_text(
                     text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None
                 )
@@ -168,7 +216,7 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
     original_request_row = await db.get_request_by_id(request_id)
     if not original_request_row:
         if callback_query.message:
-            error_text_obj = Text(f"❗error: request id {request_id} not found.")
+            error_text_obj = Text(MSG_ADMIN_REQUEST_NOT_FOUND.format(request_id=request_id))
             await callback_query.message.edit_text(
                 error_text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None
             )
@@ -187,10 +235,7 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
             original_admin_chat_id=callback_query.message.chat.id,
             original_message_text=original_message_content,
         )
-        prompt_text_str = (
-            f"✍️ please send the note for request id {request_id} to be {base_action_key}d.\nyou can cancel from the"
-            " admin panel if you return via /start."
-        )
+        prompt_text_str = PROMPT_ADMIN_NOTE_FOR_REQUEST.format(request_id=request_id, base_action_key=base_action_key)
         prompt_text_obj = Text(prompt_text_str)
         if callback_query.message:
             await callback_query.message.edit_text(
@@ -221,16 +266,17 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
             admin_note=None,
         )
     else:
-        admin_confirm_log_msg_raw = f"❗unknown action '{action_full_key}' for request id {request_id}."
+        admin_confirm_log_msg_raw = MSG_ADMIN_ACTION_UNKNOWN.format(
+            action_full_key=action_full_key, request_id=request_id
+        )
 
     if callback_query.message:
         updated_admin_notification_text_obj = Text(
-            Text(original_message_content if original_message_content else "request details"),
-            "\n\n---\n",
-            Bold("action taken by "),
+            Text(original_message_content if original_message_content else "Request details"),
+            MSG_ADMIN_MESSAGE_DIVIDER,
+            Bold(MSG_ADMIN_ACTION_TAKEN_BY),
             TextLink(callback_query.from_user.full_name, url=f"tg://user?id={callback_query.from_user.id}"),
-            Text(": "),
-            Text(action_full_key.replace("_", " ")),
+            Text(MSG_ADMIN_ACTION_TAKEN_SUFFIX.format(action=action_full_key.replace("_", " "))),
             Text("\n"),
             Text(admin_confirm_log_msg_raw),
         )
@@ -253,7 +299,7 @@ async def admin_note_handler(message: Message, state: FSMContext, bot: Bot):
         return
 
     if not await is_admin(message.from_user.id, bot):
-        reply_text_obj = Text("⛔ this action is admin-only.")
+        reply_text_obj = Text(MSG_ADMIN_ONLY_ACTION)
         await message.reply(reply_text_obj.as_markdown(), parse_mode="MarkdownV2")
         await state.clear()
         return
@@ -263,19 +309,19 @@ async def admin_note_handler(message: Message, state: FSMContext, bot: Bot):
     base_action = fsm_data.get("admin_base_action")
     original_admin_message_id = fsm_data.get("original_admin_message_id")
     original_admin_chat_id = fsm_data.get("original_admin_chat_id")
-    original_message_text_from_fsm = fsm_data.get("original_message_text", f"original request id: {request_id}")
+    original_message_text_from_fsm = fsm_data.get("original_message_text", f"Original request ID: {request_id}")
 
     admin_note_text_raw = truncate_text(message.text, MAX_NOTE_LENGTH)
     await state.clear()
 
     if not request_id or not base_action:
-        error_text_obj = Text("❗error: could not retrieve context for adding note. please try the action again.")
+        error_text_obj = Text(MSG_ADMIN_CONTEXT_ERROR_FOR_NOTE)
         await message.answer(error_text_obj.as_markdown(), parse_mode="MarkdownV2")
         return
 
     original_request_row = await db.get_request_by_id(request_id)
     if not original_request_row:
-        error_text_obj = Text(f"❗error: request id {request_id} not found.")
+        error_text_obj = Text(MSG_ADMIN_REQUEST_NOT_FOUND.format(request_id=request_id))
         await message.answer(error_text_obj.as_markdown(), parse_mode="MarkdownV2")
         return
     original_request = dict(original_request_row)
@@ -302,20 +348,21 @@ async def admin_note_handler(message: Message, state: FSMContext, bot: Bot):
             admin_note=admin_note_text_raw,
         )
     else:
-        admin_confirm_log_msg_raw = (
-            f"❗error processing admin action '{base_action}' with note for request id {request_id}."
-        )
+        admin_confirm_log_msg_raw = MSG_ADMIN_ACTION_UNKNOWN.format(action_full_key=base_action, request_id=request_id)
 
-    reply_text_obj = Text(f"✅ action (with note) for request id {request_id} processed: {admin_confirm_log_msg_raw}")
+    reply_text_obj = Text(
+        MSG_ADMIN_ACTION_WITH_NOTE_PROCESSED.format(request_id=request_id, log_message=admin_confirm_log_msg_raw)
+    )
     await message.answer(reply_text_obj.as_markdown(), parse_mode="MarkdownV2")
 
     if original_admin_chat_id and original_admin_message_id:
         updated_admin_notification_text_obj = Text(
             Text(original_message_text_from_fsm),
-            "\n\n---\n",
-            Bold("action taken by "),
+            MSG_ADMIN_MESSAGE_DIVIDER,
+            Bold(MSG_ADMIN_ACTION_TAKEN_BY),
             TextLink(message.from_user.full_name, url=f"tg://user?id={message.from_user.id}"),
-            Text(f": {base_action} with note\n"),
+            Text(MSG_ADMIN_ACTION_TAKEN_SUFFIX.format(action=f"{base_action} with note")),
+            Text("\n"),
             Italic(admin_note_text_raw),
             Text("\n"),
             Text(admin_confirm_log_msg_raw.split(".")[0] + "."),
@@ -331,6 +378,8 @@ async def admin_note_handler(message: Message, state: FSMContext, bot: Bot):
         except Exception as e:
             logger.debug("failed to update original admin message after note: %s", e)
             fallback_text_obj = Text(
-                f"update for request id {request_id}: {admin_confirm_log_msg_raw} (note: {admin_note_text_raw})"
+                MSG_ADMIN_MODERATE_UPDATE_FALLBACK.format(
+                    request_id=request_id, log_message=admin_confirm_log_msg_raw, admin_note=admin_note_text_raw
+                )
             )
             await bot.send_message(original_admin_chat_id, fallback_text_obj.as_markdown(), parse_mode="MarkdownV2")

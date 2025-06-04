@@ -1,5 +1,6 @@
 from aiogram import Router, F, Bot
 from aiogram.types import CallbackQuery
+from aiogram.utils.formatting import Text
 
 import telecopter.database as db
 from telecopter.logger import setup_logger
@@ -42,7 +43,8 @@ async def handle_user_approval_action_from_task_cb(callback_query: CallbackQuery
         or not await is_admin(callback_query.from_user.id, bot)
         or not callback_query.message
     ):
-        await callback_query.answer(MSG_ACCESS_DENIED, show_alert=True)
+        text_obj = Text(MSG_ACCESS_DENIED)
+        await callback_query.answer(text_obj.text, show_alert=True)
         return
 
     try:
@@ -51,15 +53,17 @@ async def handle_user_approval_action_from_task_cb(callback_query: CallbackQuery
         task_request_id = int(task_request_id_str)
     except ValueError:
         logger.error("invalid callback data for user approval task action: %s", callback_query.data)
-        await callback_query.answer(MSG_ERROR_PROCESSING_ACTION_ALERT, show_alert=True)
+        text_obj = Text(MSG_ERROR_PROCESSING_ACTION_ALERT)
+        await callback_query.answer(text_obj.text, show_alert=True)
         return
 
     original_task_info = await db.get_request_by_id(task_request_id)
     if not original_task_info:
         msg = MSG_ADMIN_REQUEST_NOT_FOUND.format(request_id=task_request_id)
-        await callback_query.answer(msg, show_alert=True)
+        text_obj = Text(msg)
+        await callback_query.answer(text_obj.text, show_alert=True)
         try:
-            await callback_query.message.edit_text(msg, reply_markup=None)
+            await callback_query.message.edit_text(text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None)
         except Exception as e:
             logger.debug("failed to edit message for non-existent task %s: %s", task_request_id, e)
         return
@@ -67,24 +71,32 @@ async def handle_user_approval_action_from_task_cb(callback_query: CallbackQuery
     current_task_status = original_task_info["status"]
     if current_task_status != REQUEST_STATUS_PENDING_ADMIN:
         final_message = MSG_TASK_ALREADY_PROCESSED_EDIT.format(task_id=task_request_id, status=current_task_status)
-        await callback_query.answer(MSG_TASK_ALREADY_PROCESSED_ALERT, show_alert=True)
+        text_obj = Text(MSG_TASK_ALREADY_PROCESSED_ALERT)
+        text_obj_edit = Text(final_message)
+        await callback_query.answer(text_obj.text, show_alert=True)
         try:
-            await callback_query.message.edit_text(final_message, reply_markup=None)
+            await callback_query.message.edit_text(
+                text_obj_edit.as_markdown(), parse_mode="MarkdownV2", reply_markup=None
+            )
         except Exception as e:
             logger.debug("failed to edit message for already processed task %s: %s", task_request_id, e)
         return
 
     target_user_db_info = await db.get_user(target_user_id)
     if not target_user_db_info:
-        await callback_query.answer(MSG_ADMIN_TARGET_USER_NOT_FOUND_ALERT, show_alert=True)
+        text_obj = Text(MSG_ADMIN_TARGET_USER_NOT_FOUND_ALERT)
+        await callback_query.answer(text_obj.text, show_alert=True)
         await db.update_request_status(
             task_request_id, "error_user_not_found", admin_note="Target user for approval task not found."
         )
         try:
+            error_message = (
+                f"Error: Target user ID {target_user_id} not found for task {task_request_id}. Task closed due to"
+                " error."
+            )
+            text_obj_edit = Text(error_message)
             await callback_query.message.edit_text(
-                f"Error: Target user ID {target_user_id} not found for task {task_request_id}\. Task closed due to"
-                " error\.",
-                reply_markup=None,
+                text_obj_edit.as_markdown(), parse_mode="MarkdownV2", reply_markup=None
             )
         except Exception as e:
             logger.debug("failed to edit message for target user not found for task %s: %s", task_request_id, e)
@@ -114,14 +126,18 @@ async def handle_user_approval_action_from_task_cb(callback_query: CallbackQuery
             action_result_text = MSG_USER_ALREADY_APPROVED_EDIT.format(
                 user_name=target_user_name, user_id=target_user_id, task_id=task_request_id
             )
-            await callback_query.answer(MSG_USER_ALREADY_APPROVED_ALERT, show_alert=True)
+            text_obj = Text(MSG_USER_ALREADY_APPROVED_ALERT)
+            text_obj_edit = Text(action_result_text)
+            await callback_query.answer(text_obj.text, show_alert=True)
             await db.update_request_status(
                 task_request_id,
                 new_task_status,
                 admin_note=f"User was already approved. Task closed by admin {admin_user_id}.",
             )
             try:
-                await callback_query.message.edit_text(action_result_text, reply_markup=None)
+                await callback_query.message.edit_text(
+                    text_obj_edit.as_markdown(), parse_mode="MarkdownV2", reply_markup=None
+                )
             except Exception as e:
                 logger.debug("failed to edit message for user already approved task %s: %s", task_request_id, e)
             return
@@ -136,14 +152,18 @@ async def handle_user_approval_action_from_task_cb(callback_query: CallbackQuery
             action_result_text = MSG_USER_ALREADY_REJECTED_EDIT.format(
                 user_name=target_user_name, user_id=target_user_id, task_id=task_request_id
             )
-            await callback_query.answer(MSG_USER_ALREADY_REJECTED_ALERT, show_alert=True)
+            text_obj = Text(MSG_USER_ALREADY_REJECTED_ALERT)
+            text_obj_edit = Text(action_result_text)
+            await callback_query.answer(text_obj.text, show_alert=True)
             await db.update_request_status(
                 task_request_id,
                 new_task_status,
                 admin_note=f"User was already rejected. Task closed by admin {admin_user_id}.",
             )
             try:
-                await callback_query.message.edit_text(action_result_text, reply_markup=None)
+                await callback_query.message.edit_text(
+                    text_obj_edit.as_markdown(), parse_mode="MarkdownV2", reply_markup=None
+                )
             except Exception as e:
                 logger.debug("failed to edit message for user already rejected task %s: %s", task_request_id, e)
             return
@@ -154,7 +174,8 @@ async def handle_user_approval_action_from_task_cb(callback_query: CallbackQuery
             user_name=target_user_name, user_id=target_user_id, task_id=task_request_id
         )
     else:
-        await callback_query.answer(MSG_ADMIN_UNKNOWN_ACTION_ALERT, show_alert=True)
+        text_obj = Text(MSG_ADMIN_UNKNOWN_ACTION_ALERT)
+        await callback_query.answer(text_obj.text, show_alert=True)
         return
 
     await db.update_user_approval_status(target_user_id, new_user_status)
@@ -178,7 +199,8 @@ async def handle_user_approval_action_from_task_cb(callback_query: CallbackQuery
 
     if chat_id_to_notify:
         try:
-            await bot.send_message(chat_id_to_notify, user_notification_message)
+            text_obj = Text(user_notification_message)
+            await bot.send_message(chat_id_to_notify, text_obj.as_markdown(), parse_mode="MarkdownV2")
             notification_sent_successfully = True
             logger.info(
                 "successfully sent '%s' notification to user %s (chat_id: %s)",
@@ -202,9 +224,15 @@ async def handle_user_approval_action_from_task_cb(callback_query: CallbackQuery
 
     if callback_query.message:
         try:
-            await callback_query.message.edit_text(action_result_text, reply_markup=None)
+            text_obj_result = Text(action_result_text)
+            await callback_query.message.edit_text(
+                text_obj_result.as_markdown(), parse_mode="MarkdownV2", reply_markup=None
+            )
         except Exception as e:
             logger.debug("failed to edit admin task message after user approval action: %s", e)
-            await bot.send_message(callback_query.from_user.id, action_result_text)
+            text_obj_fallback = Text(action_result_text)
+            await bot.send_message(
+                callback_query.from_user.id, text_obj_fallback.as_markdown(), parse_mode="MarkdownV2"
+            )
 
     await callback_query.answer()

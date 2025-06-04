@@ -16,8 +16,12 @@ from telecopter.constants import (
     MSG_MAIN_MENU_BACK_WELCOME,
     PROMPT_MAIN_MENU_REQUEST_MEDIA,
     MSG_MAIN_MENU_MEDIA_SEARCH_UNAVAILABLE,
+    BTN_REQUEST_MEDIA,
+    BTN_MY_REQUESTS,
+    BTN_REPORT_PROBLEM,
+    BTN_HELP,
+    BTN_CANCEL_ACTION,
 )
-
 
 logger = setup_logger(__name__)
 
@@ -27,11 +31,11 @@ main_menu_router = Router(name="main_menu_router")
 def get_user_main_menu_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.add(
-        InlineKeyboardButton(text="🎬 Request Media", callback_data="main_menu:request_media"),
-        InlineKeyboardButton(text="📊 My Requests", callback_data="main_menu:my_requests"),
-        InlineKeyboardButton(text="⚠️ Report a Problem", callback_data="main_menu:report_problem"),
-        InlineKeyboardButton(text="❓ Help", callback_data="main_menu:show_help"),
-        InlineKeyboardButton(text="❌ Cancel Action", callback_data="main_menu:cancel_current_action"),
+        InlineKeyboardButton(text=BTN_REQUEST_MEDIA, callback_data="main_menu:request_media"),
+        InlineKeyboardButton(text=BTN_MY_REQUESTS, callback_data="main_menu:my_requests"),
+        InlineKeyboardButton(text=BTN_REPORT_PROBLEM, callback_data="main_menu:report_problem"),
+        InlineKeyboardButton(text=BTN_HELP, callback_data="main_menu:show_help"),
+        InlineKeyboardButton(text=BTN_CANCEL_ACTION, callback_data="main_menu:cancel_current_action"),
     )
     builder.adjust(2, 2, 1)
     return builder.as_markup()
@@ -43,6 +47,7 @@ async def show_main_menu_for_user(
     custom_text_str: Optional[str] = None,
     custom_text_md: Optional[str] = None,
     custom_text_html: Optional[str] = None,
+    custom_text_obj: Optional[Text] = None,
 ):
     user_first_name = event.from_user.first_name if event.from_user else "there"
     reply_markup = get_user_main_menu_keyboard()
@@ -50,7 +55,9 @@ async def show_main_menu_for_user(
     text_to_send: str
     parse_mode_to_use: Optional[str] = "MarkdownV2"
 
-    if custom_text_html:
+    if custom_text_obj:
+        text_to_send = custom_text_obj.as_markdown()
+    elif custom_text_html:
         text_to_send = custom_text_html
         parse_mode_to_use = "HTML"
     elif custom_text_md:
@@ -58,8 +65,7 @@ async def show_main_menu_for_user(
     elif custom_text_str:
         text_to_send = Text(custom_text_str).as_markdown()
     else:
-        default_text_str = MSG_MAIN_MENU_DEFAULT_WELCOME.format(user_first_name=user_first_name)
-        text_to_send = Text(default_text_str).as_markdown()
+        text_to_send = Text(MSG_MAIN_MENU_DEFAULT_WELCOME.format(user_first_name=user_first_name)).as_markdown()
 
     if isinstance(event, Message) and event.chat:
         await bot.send_message(event.chat.id, text_to_send, reply_markup=reply_markup, parse_mode=parse_mode_to_use)
@@ -98,10 +104,12 @@ async def main_menu_request_media_cb(callback_query: CallbackQuery, state: FSMCo
     from telecopter.config import TMDB_API_KEY
 
     if not TMDB_API_KEY:
-        await callback_query.message.edit_text(MSG_MAIN_MENU_MEDIA_SEARCH_UNAVAILABLE, reply_markup=None)
+        text_obj = Text(MSG_MAIN_MENU_MEDIA_SEARCH_UNAVAILABLE)
+        await callback_query.message.edit_text(text_obj.as_markdown(), reply_markup=None, parse_mode="MarkdownV2")
         return
 
-    await callback_query.message.edit_text(PROMPT_MAIN_MENU_REQUEST_MEDIA, reply_markup=None)
+    text_obj = Text(PROMPT_MAIN_MENU_REQUEST_MEDIA)
+    await callback_query.message.edit_text(text_obj.as_markdown(), reply_markup=None, parse_mode="MarkdownV2")
     await state.set_state(RequestMediaStates.typing_media_name)
 
 
@@ -135,5 +143,6 @@ async def handle_back_to_main_menu_cb(callback_query: CallbackQuery, bot: Bot, s
         return
     if not await ensure_user_approved(callback_query, bot, state):
         return
-    welcome_text_str = MSG_MAIN_MENU_BACK_WELCOME.format(user_first_name=callback_query.from_user.first_name)
-    await show_main_menu_for_user(callback_query, bot, custom_text_str=welcome_text_str)
+
+    welcome_text_obj = Text(MSG_MAIN_MENU_BACK_WELCOME.format(user_first_name=callback_query.from_user.first_name))
+    await show_main_menu_for_user(callback_query, bot, custom_text_obj=welcome_text_obj)

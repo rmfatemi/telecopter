@@ -112,17 +112,19 @@ async def start_command_handler(message: Message, state: FSMContext, bot: Bot):
 
         await show_main_menu_for_user(message, bot)
     elif approval_status == USER_STATUS_PENDING_APPROVAL:
-        await message.answer(MSG_START_PENDING_APPROVAL.format(user_name=user_name))
+        text_obj = Text(MSG_START_PENDING_APPROVAL.format(user_name=user_name))
+        await message.answer(text_obj.as_markdown(), parse_mode="MarkdownV2")
     elif approval_status == USER_STATUS_REJECTED:
-        await message.answer(MSG_START_REJECTED.format(user_name=user_name))
+        text_obj = Text(MSG_START_REJECTED.format(user_name=user_name))
+        await message.answer(text_obj.as_markdown(), parse_mode="MarkdownV2")
     elif approval_status == USER_STATUS_NEW:
         keyboard = get_request_access_keyboard()
-        await message.answer(
-            MSG_START_WELCOME_NEW_PROMPT.format(user_name=user_name), reply_markup=keyboard.as_markup()
-        )
+        text_obj = Text(MSG_START_WELCOME_NEW_PROMPT.format(user_name=user_name))
+        await message.answer(text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=keyboard.as_markup())
     else:
         logger.error("user %s has an unexpected approval status: %s", user_id, approval_status)
-        await message.answer(MSG_START_UNEXPECTED_STATUS_ERROR)
+        text_obj = Text(MSG_START_UNEXPECTED_STATUS_ERROR)
+        await message.answer(text_obj.as_markdown(), parse_mode="MarkdownV2")
 
 
 @core_commands_router.callback_query(F.data.startswith(f"{CALLBACK_USER_ACCESS_REQUEST_PREFIX}:"))
@@ -144,7 +146,8 @@ async def handle_user_access_request_cb(callback_query: CallbackQuery, bot: Bot,
         )
         logger.info("created user_approval task (id: %s) for user %s", task_id, user_id)
 
-        await callback_query.message.edit_text(MSG_USER_ACCESS_REQUEST_SUBMITTED, reply_markup=None)
+        text_obj = Text(MSG_USER_ACCESS_REQUEST_SUBMITTED)
+        await callback_query.message.edit_text(text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None)
         await callback_query.answer(MSG_USER_ACCESS_REQUEST_SUBMITTED_ALERT)
 
         user_details_formatted_text = await format_user_for_admin_notification(user_id, bot)
@@ -174,7 +177,8 @@ async def handle_user_access_request_cb(callback_query: CallbackQuery, bot: Bot,
         await notify_admin_formatted(bot, admin_notify_text_obj, admin_keyboard.as_markup())
 
     elif action == CALLBACK_USER_ACCESS_LATER_ACTION:
-        await callback_query.message.edit_text(MSG_USER_ACCESS_DEFERRED, reply_markup=None)
+        text_obj = Text(MSG_USER_ACCESS_DEFERRED)
+        await callback_query.message.edit_text(text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None)
         await callback_query.answer(MSG_USER_ACCESS_DEFERRED_ALERT)
     else:
         await callback_query.answer(MSG_ADMIN_UNKNOWN_ACTION_ALERT, show_alert=True)
@@ -229,9 +233,13 @@ async def universal_cancel_handler(event: Union[Message, CallbackQuery], state: 
         await state.clear()
         if isinstance(event, CallbackQuery) and event.message:
             await event.answer(MSG_ACTION_CANCELLED_ALERT, show_alert=False)
-        await show_main_menu_for_user(event, bot, custom_text_str=MSG_ACTION_CANCELLED_MENU)
+
+        text_obj = Text(MSG_ACTION_CANCELLED_MENU)
+        await show_main_menu_for_user(event, bot, custom_text_obj=text_obj)
     else:
         logger.info("user %s used cancel outside of a conversation.", user_id)
         if isinstance(event, CallbackQuery):
             await event.answer(MSG_NO_ACTIVE_OPERATION_ALERT, show_alert=False)
-        await show_main_menu_for_user(event, bot, custom_text_str=MSG_NO_ACTIVE_OPERATION_MENU)
+
+        text_obj = Text(MSG_NO_ACTIVE_OPERATION_MENU)
+        await show_main_menu_for_user(event, bot, custom_text_obj=text_obj)

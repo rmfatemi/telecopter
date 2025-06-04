@@ -139,7 +139,8 @@ async def ensure_user_approved(event: Union[Message, CallbackQuery], bot: Bot, s
             )
 
         if isinstance(event, Message):
-            await event.answer(message_text)
+            text_obj = Text(message_text)
+            await event.answer(text_obj.as_markdown(), parse_mode="MarkdownV2")
         elif isinstance(event, CallbackQuery):
             await event.answer(message_text, show_alert=show_alert_flag)
             if event.message:

@@ -4,6 +4,7 @@ from aiogram import Router, Bot, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
+from aiogram.utils.formatting import Text
 from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup
 
 from telecopter.logger import setup_logger
@@ -18,7 +19,6 @@ from telecopter.constants import (
     CALLBACK_ADMIN_PANEL_VIEW_TASKS,
     CALLBACK_ADMIN_PANEL_SEND_ANNOUNCEMENT,
 )
-
 
 logger = setup_logger(__name__)
 
@@ -41,24 +41,28 @@ def get_admin_panel_keyboard() -> InlineKeyboardMarkup:
 async def show_admin_panel(event: Union[Message, CallbackQuery], bot: Bot):
     if not event.from_user or not await is_admin(event.from_user.id, bot):
         if isinstance(event, Message):
-            await event.reply(MSG_ACCESS_DENIED)
+            text_obj = Text(MSG_ACCESS_DENIED)
+            await event.reply(text_obj.as_markdown(), parse_mode="MarkdownV2")
         elif isinstance(event, CallbackQuery):
             await event.answer(MSG_NOT_AUTHORIZED_ALERT, show_alert=True)
         return
 
     reply_markup = get_admin_panel_keyboard()
+    text_obj = Text(TITLE_ADMIN_PANEL)
 
     if isinstance(event, Message) and event.chat:
-        await event.answer(TITLE_ADMIN_PANEL, reply_markup=reply_markup)
+        await event.answer(text_obj.as_markdown(), reply_markup=reply_markup, parse_mode="MarkdownV2")
     elif isinstance(event, CallbackQuery) and event.message:
         try:
-            await event.message.edit_text(TITLE_ADMIN_PANEL, reply_markup=reply_markup)
+            await event.message.edit_text(text_obj.as_markdown(), reply_markup=reply_markup, parse_mode="MarkdownV2")
             await event.answer()
         except Exception as e:
             logger.error("failed to edit message for admin panel: %s. sending new.", e)
             await event.answer()
             if event.message.chat:
-                await bot.send_message(event.message.chat.id, TITLE_ADMIN_PANEL, reply_markup=reply_markup)
+                await bot.send_message(
+                    event.message.chat.id, text_obj.as_markdown(), reply_markup=reply_markup, parse_mode="MarkdownV2"
+                )
 
 
 @admin_panel_router.message(Command("admin"))
@@ -71,7 +75,7 @@ async def admin_panel_view_tasks_cb(callback_query: CallbackQuery, bot: Bot, sta
     from .admin_tasks import list_admin_tasks
 
     if not callback_query.from_user or not await is_admin(callback_query.from_user.id, bot):
-        await callback_query.answer(MSG_ACCESS_DENIED, show_alert=True)
+        await callback_query.answer(MSG_NOT_AUTHORIZED_ALERT, show_alert=True)
         return
     await callback_query.answer()
     if callback_query.message and callback_query.from_user:
@@ -89,7 +93,7 @@ async def admin_panel_send_announcement_cb(callback_query: CallbackQuery, bot: B
     from .admin_announce import ask_announcement_type
 
     if not callback_query.from_user or not await is_admin(callback_query.from_user.id, bot):
-        await callback_query.answer(MSG_ACCESS_DENIED, show_alert=True)
+        await callback_query.answer(MSG_NOT_AUTHORIZED_ALERT, show_alert=True)
         return
     await callback_query.answer()
     if callback_query.message:

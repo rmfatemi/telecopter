@@ -29,47 +29,50 @@ async def initialize_database():
         logger.info("users table initialized.")
 
         await db.execute("""
-            create table if not exists requests (
-                request_id integer primary key autoincrement,
-                user_id integer not null,
-                request_type text not null,
-                status text not null,
-                tmdb_id integer,
-                title text not null,
-                year integer,
-                imdb_id text,
-                user_query text,
-                user_note text,
-                admin_note text,
-                created_at text not null default current_timestamp,
-                updated_at text not null default current_timestamp,
-                foreign key (user_id) references users(user_id)
-            )
-        """)
+                         create table if not exists requests
+                         (
+                             request_id   integer primary key autoincrement,
+                             user_id      integer not null,
+                             request_type text    not null,
+                             status       text    not null,
+                             tmdb_id      integer,
+                             title        text    not null,
+                             year         integer,
+                             imdb_id      text,
+                             user_query   text,
+                             user_note    text,
+                             admin_note   text,
+                             created_at   text    not null default current_timestamp,
+                             updated_at   text    not null default current_timestamp,
+                             foreign key (user_id) references users (user_id)
+                         )
+                         """)
         logger.info("requests table initialized.")
 
         await db.execute("""
-            create trigger if not exists update_requests_updated_at
-            after update on requests
-            for each row
-            begin
-                update requests set updated_at = current_timestamp where request_id = old.request_id;
-            end;
-        """)
+                         create trigger if not exists update_requests_updated_at
+                             after update
+                             on requests
+                             for each row
+                         begin
+                             update requests set updated_at = current_timestamp where request_id = old.request_id;
+                         end;
+                         """)
         logger.info("requests table 'updated_at' trigger initialized.")
 
         await db.execute("""
-            create table if not exists admin_logs (
-                log_id integer primary key autoincrement,
-                admin_user_id integer not null,
-                request_id integer,
-                action text not null,
-                details text,
-                created_at text not null default current_timestamp,
-                foreign key (request_id) references requests(request_id),
-                foreign key (admin_user_id) references users(user_id)
-            )
-        """)
+                         create table if not exists admin_logs
+                         (
+                             log_id        integer primary key autoincrement,
+                             admin_user_id integer not null,
+                             request_id    integer,
+                             action        text    not null,
+                             details       text,
+                             created_at    text    not null default current_timestamp,
+                             foreign key (request_id) references requests (request_id),
+                             foreign key (admin_user_id) references users (user_id)
+                         )
+                         """)
         logger.info("admin_logs table initialized.")
         await db.commit()
     logger.info("database initialization complete.")
@@ -86,10 +89,10 @@ async def add_or_update_user(
         if existing_user_row:
             await db.execute(
                 """
-                update users set
-                    chat_id = ?,
-                    username = ?,
-                    first_name = ?,
+                update users
+                set chat_id        = ?,
+                    username       = ?,
+                    first_name     = ?,
                     last_active_at = ?
                 where user_id = ?
                 """,
@@ -173,7 +176,8 @@ async def add_request(
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
         cursor = await db.execute(
             """
-            insert into requests (user_id, request_type, status, tmdb_id, title, year, imdb_id, user_query, user_note, created_at, updated_at)
+            insert into requests (user_id, request_type, status, tmdb_id, title, year, imdb_id, user_query, user_note,
+                                  created_at, updated_at)
             values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
@@ -237,11 +241,12 @@ async def get_user_requests(user_id: int, page: int = 1, page_size: int = DEFAUL
         db.row_factory = aiosqlite.Row
         async with db.execute(
             """
-            select * from requests
-            where user_id = ?
-            order by created_at desc
-            limit ? offset ?
-            """,
+                select *
+                from requests
+                where user_id = ?
+                order by created_at desc
+                limit ? offset ?
+                """,
             (user_id, page_size, offset),
         ) as cursor:
             return await cursor.fetchall()
@@ -312,11 +317,11 @@ async def get_all_user_chat_ids() -> list[int]:
 async def get_request_submitter_chat_id(request_id: int) -> int | None:
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
         query = """
-        select u.chat_id
-        from requests r
-        join users u on r.user_id = u.user_id
-        where r.request_id = ?
-        """
+                select u.chat_id
+                from requests r
+                         join users u on r.user_id = u.user_id
+                where r.request_id = ? \
+                """
         async with db.execute(query, (request_id,)) as cursor:
             row = await cursor.fetchone()
             return row[0] if row else None
@@ -327,17 +332,18 @@ async def get_actionable_admin_requests(page: int, page_size: int = DEFAULT_PAGE
     async with aiosqlite.connect(DATABASE_FILE_PATH) as conn:
         conn.row_factory = aiosqlite.Row
         query = """
-            select * from requests
-            where status = 'pending_admin' or status = 'approved'
-            order by
-                case status
-                    when 'pending_admin' then 1
-                    when 'approved' then 2
-                    else 3
-                end,
-                created_at asc
-            limit ? offset ?
-        """
+                select * \
+                from requests
+                where status = 'pending_admin' \
+                   or status = 'approved'
+                order by case status \
+                             when 'pending_admin' then 1 \
+                             when 'approved' then 2 \
+                             else 3 \
+                             end, \
+                         created_at asc
+                limit ? offset ? \
+                """
         cursor = await conn.execute(query, (page_size, offset))
         return await cursor.fetchall()
 

@@ -77,7 +77,8 @@ async def list_admin_tasks(message_to_edit: Message, acting_user_id: int, bot: B
     if not await is_admin(acting_user_id, bot):
         logger.warning("list_admin_tasks called by non-admin user %s.", acting_user_id)
         if message_to_edit.chat:
-            await bot.send_message(message_to_edit.chat.id, MSG_ACCESS_DENIED)
+            text_obj = Text(MSG_ACCESS_DENIED)
+            await bot.send_message(message_to_edit.chat.id, text_obj.as_markdown(), parse_mode="MarkdownV2")
         return
 
     await state.clear()
@@ -173,7 +174,8 @@ async def admin_tasks_page_cb(callback_query: CallbackQuery, bot: Bot, state: FS
         or not await is_admin(callback_query.from_user.id, bot)
         or not callback_query.message
     ):
-        await callback_query.answer(MSG_ERROR_PROCESSING_ACTION_ALERT, show_alert=True)
+        text_obj = Text(MSG_ERROR_PROCESSING_ACTION_ALERT)
+        await callback_query.answer(text_obj.as_markdown(), show_alert=True)
         return
 
     acting_user_id = callback_query.from_user.id
@@ -194,7 +196,8 @@ async def admin_tasks_back_panel_cb(callback_query: CallbackQuery, bot: Bot):
     from .admin_panel import show_admin_panel
 
     if not callback_query.from_user or not await is_admin(callback_query.from_user.id, bot):
-        await callback_query.answer(MSG_ACCESS_DENIED, show_alert=True)
+        text_obj = Text(MSG_ACCESS_DENIED)
+        await callback_query.answer(text_obj.as_markdown(), show_alert=True)
         return
     await callback_query.answer()
     await show_admin_panel(callback_query, bot)
@@ -210,7 +213,8 @@ async def admin_task_review_or_moderate_trigger_cb(callback_query: CallbackQuery
         or not await is_admin(callback_query.from_user.id, bot)
         or not callback_query.message
     ):
-        await callback_query.answer(MSG_ACCESS_DENIED, show_alert=True)
+        text_obj = Text(MSG_ACCESS_DENIED)
+        await callback_query.answer(text_obj.as_markdown(), show_alert=True)
         return
 
     action_parts = callback_query.data.split(":")
@@ -221,12 +225,14 @@ async def admin_task_review_or_moderate_trigger_cb(callback_query: CallbackQuery
         request_id = int(request_id_str)
     except ValueError:
         logger.error(f"invalid request_id in {action_prefix} callback: {request_id_str}")
-        await callback_query.message.answer(MSG_ADMIN_TASK_IDENTIFY_ERROR)
+        text_obj = Text(MSG_ADMIN_TASK_IDENTIFY_ERROR)
+        await callback_query.message.answer(text_obj.as_markdown(), parse_mode="MarkdownV2")
         return
 
     db_request_row = await db.get_request_by_id(request_id)
     if not db_request_row:
-        await callback_query.message.answer(MSG_ADMIN_REQUEST_NOT_FOUND.format(request_id=request_id))
+        text_obj = Text(MSG_ADMIN_REQUEST_NOT_FOUND.format(request_id=request_id))
+        await callback_query.message.answer(text_obj.as_markdown(), parse_mode="MarkdownV2")
         return
 
     db_request_dict = dict(db_request_row)
@@ -265,9 +271,8 @@ async def admin_task_review_or_moderate_trigger_cb(callback_query: CallbackQuery
     elif action_prefix == CALLBACK_ADMIN_TASK_MODERATE_PREFIX and request_type != REQUEST_TYPE_USER_APPROVAL:
         submitter_user_info_row = await db.get_user(task_related_user_id)
         if not submitter_user_info_row:
-            await bot.send_message(
-                target_chat_id_for_action_panel, MSG_ADMIN_TASK_USER_NOT_FOUND_ERROR.format(request_id=request_id)
-            )
+            text_obj = Text(MSG_ADMIN_TASK_USER_NOT_FOUND_ERROR.format(request_id=request_id))
+            await bot.send_message(target_chat_id_for_action_panel, text_obj.as_markdown(), parse_mode="MarkdownV2")
             return
 
         admin_msg_obj = format_request_for_admin(db_request_dict, dict(submitter_user_info_row))
@@ -287,4 +292,5 @@ async def admin_task_review_or_moderate_trigger_cb(callback_query: CallbackQuery
         logger.warning(
             "mismatched action prefix (%s) and request type (%s) for task %s", action_prefix, request_type, request_id
         )
-        await bot.send_message(target_chat_id_for_action_panel, text=MSG_ERROR_UNEXPECTED)
+        text_obj = Text(MSG_ERROR_UNEXPECTED)
+        await bot.send_message(target_chat_id_for_action_panel, text_obj.as_markdown(), parse_mode="MarkdownV2")
