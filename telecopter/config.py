@@ -1,12 +1,14 @@
 import os
-
 from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
 
-ADMIN_GROUP_CHAT_ID: int = int(os.environ.get("ADMIN_GROUP_CHAT_ID", "0"))
 TELEGRAM_BOT_TOKEN: str = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+
+ADMIN_CHAT_IDS = [
+    int(admin_id.strip()) for admin_id in (os.environ.get("ADMIN_CHAT_IDS", "")).split(",") if admin_id.strip()
+]
 
 TMDB_BASE_URL: str = "https://api.themoviedb.org/3"
 TMDB_IMAGE_BASE_URL: str = "https://image.tmdb.org/t/p/w500"
