@@ -3,12 +3,13 @@ from aiogram import Router, F, Bot
 from aiogram.filters import StateFilter
 from aiogram.utils.formatting import Text
 from aiogram.fsm.context import FSMContext
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import telecopter.database as db
 from telecopter.logger import setup_logger
 from telecopter.config import MAX_REPORT_LENGTH
 from telecopter.handlers.handler_states import ReportProblemStates
-from telecopter.handlers.common_utils import notify_admin_formatted
+from telecopter.handlers.common_utils import notify_admin_formatted, ensure_user_approved
 from telecopter.utils import truncate_text, format_request_for_admin
 from telecopter.handlers.admin_moderate import get_admin_report_action_keyboard
 from telecopter.constants import (
@@ -17,6 +18,8 @@ from telecopter.constants import (
     PROMPT_PROBLEM_DESCRIPTION,
     PROMPT_PROBLEM_DESCRIPTION_RETRY,
     ERR_PROBLEM_DESCRIPTION_TOO_SHORT,
+    BTN_CANCEL_ACTION,
+    CALLBACK_ACTION_CANCEL,
 )
 
 logger = setup_logger(__name__)
@@ -52,13 +55,20 @@ async def _submit_problem_report_logic(message: Message, problem_text: str, stat
     await show_main_menu_for_user(message, bot_instance, custom_text_str=MSG_REPORT_SUCCESS)
 
 
-async def report_command_entry_handler(
-    message: Message, state: FSMContext, bot: Bot, is_triggered_by_command: bool = True
-):
+async def report_command_entry_handler(message: Message, state: FSMContext, bot: Bot):
     if not message.from_user:
         return
+
+    if not await ensure_user_approved(message, bot, state):
+        return
+
     prompt_text_obj = Text(PROMPT_PROBLEM_DESCRIPTION)
-    await message.answer(prompt_text_obj.as_markdown(), parse_mode="MarkdownV2")
+    cancel_kb_builder = InlineKeyboardBuilder()
+    cancel_kb_builder.button(text=BTN_CANCEL_ACTION, callback_data=CALLBACK_ACTION_CANCEL)
+
+    await message.answer(
+        prompt_text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=cancel_kb_builder.as_markup()
+    )
     await state.set_state(ReportProblemStates.typing_problem)
 
 

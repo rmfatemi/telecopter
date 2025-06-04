@@ -14,14 +14,10 @@ from telecopter.config import DEFAULT_PAGE_SIZE
 from telecopter.constants import (
     BTN_PREVIOUS_PAGE,
     BTN_NEXT_PAGE,
-    BTN_REQUEST_MEDIA,
-    BTN_REPORT_PROBLEM,
     BTN_BACK_TO_MAIN_MENU,
     MSG_NO_REQUESTS_YET,
     MSG_NO_MORE_REQUESTS,
     MSG_REQUESTS_PAGE_HEADER,
-    ERR_UPDATE_REQUEST_LIST,
-    ERR_GENERAL,
 )
 
 logger = setup_logger(__name__)
@@ -41,15 +37,19 @@ def get_my_requests_pagination_keyboard(page: int, total_pages: int) -> Optional
     return None
 
 
-async def my_requests_entrypoint(message: Message, bot: Bot, state: FSMContext, is_callback: bool = False):
-    if not message.from_user:
+async def my_requests_entrypoint(
+    base_message: Message, requesting_user_id: int, bot: Bot, state: FSMContext, is_callback: bool = False
+):
+    if not base_message or not base_message.chat:
+        logger.warning("my_requests_entrypoint called with invalid base_message or chat.")
         return
+
     await _send_my_requests_page_logic(
-        message.from_user.id,
-        1,
-        message.chat.id,
-        bot,
-        original_message_id=message.message_id,
+        user_id=requesting_user_id,
+        page=1,
+        chat_id=base_message.chat.id,
+        bot=bot,
+        original_message_id=base_message.message_id,
         is_callback=is_callback,
         state=state,
     )
@@ -67,10 +67,10 @@ async def my_requests_page_cb(callback_query: CallbackQuery, state: FSMContext, 
         logger.warning(f"invalid page number in my_requests_page_cb: {callback_query.data}")
 
     await _send_my_requests_page_logic(
-        callback_query.from_user.id,
-        page,
-        callback_query.message.chat.id,
-        bot,
+        user_id=callback_query.from_user.id,
+        page=page,
+        chat_id=callback_query.message.chat.id,
+        bot=bot,
         original_message_id=callback_query.message.message_id,
         is_callback=True,
         state=state,
@@ -81,8 +81,14 @@ async def _send_my_requests_page_logic(
     user_id: int, page: int, chat_id: int, bot: Bot, original_message_id: int, is_callback: bool, state: FSMContext
 ):
     await state.clear()
+
+    logger.debug(f"Fetching requests for user_id: {user_id}, page: {page}")
     requests_rows = await db.get_user_requests(user_id, page, DEFAULT_PAGE_SIZE)
     total_requests = await db.get_user_requests_count(user_id)
+    logger.debug(
+        f"Found {len(requests_rows)} rows for this page, total_requests: {total_requests} for user_id: {user_id}"
+    )
+
     total_pages = (total_requests + DEFAULT_PAGE_SIZE - 1) // DEFAULT_PAGE_SIZE
     total_pages = max(1, total_pages)
 
@@ -91,9 +97,6 @@ async def _send_my_requests_page_logic(
 
     if not requests_rows and page == 1:
         page_content_elements.append(Text(MSG_NO_REQUESTS_YET))
-        final_keyboard_builder.button(text=BTN_REQUEST_MEDIA, callback_data="main_menu:request_media")
-        final_keyboard_builder.button(text=BTN_REPORT_PROBLEM, callback_data="main_menu:report_problem")
-        final_keyboard_builder.adjust(1)
     elif not requests_rows and page > 1:
         page_content_elements.append(Text(MSG_NO_MORE_REQUESTS.format(page=page)))
         if page > 1:
@@ -133,9 +136,14 @@ async def _send_my_requests_page_logic(
     )
 
     keyboard_to_show = final_keyboard_builder.as_markup()
-    final_text_object = (
-        as_list(*page_content_elements, sep="\n") if page_content_elements else Text(MSG_NO_REQUESTS_YET)
-    )
+
+    if not page_content_elements and page == 1:
+        final_text_object = Text(MSG_NO_REQUESTS_YET)
+    elif page_content_elements:
+        final_text_object = as_list(*page_content_elements, sep="\n")
+    else:
+        final_text_object = Text(MSG_NO_MORE_REQUESTS.format(page=page)) if page > 1 else Text(MSG_NO_REQUESTS_YET)
+
     text_to_send = final_text_object.as_markdown()
 
     try:
@@ -155,16 +163,6 @@ async def _send_my_requests_page_logic(
         if "message is not modified" in str(e).lower():
             logger.debug("message not modified for my_requests page %s, user %s.", page, user_id)
         else:
-            logger.error("telegram badrequest in _send_my_requests_page_logic: %s", e)
-            if is_callback and chat_id:
-                error_reply_obj = Text(ERR_UPDATE_REQUEST_LIST)
-                await bot.send_message(
-                    chat_id, error_reply_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=keyboard_to_show
-                )
+            logger.error("telegram badrequest in _send_my_requests_page_logic: %s for user %s", e, user_id)
     except Exception as e:
-        logger.error("exception in _send_my_requests_page_logic: %s", e)
-        if is_callback and chat_id:
-            error_reply_obj = Text(ERR_GENERAL)
-            await bot.send_message(
-                chat_id, error_reply_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=keyboard_to_show
-            )
+        logger.error("exception in _send_my_requests_page_logic: %s for user %s", e, user_id)

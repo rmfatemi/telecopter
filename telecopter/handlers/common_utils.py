@@ -1,15 +1,15 @@
+import asyncio
 from typing import Optional, Union
 
 from aiogram import Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.formatting import Text, TextLink
-from aiogram.enums import ChatMemberStatus
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import User as AiogramUser, InlineKeyboardMarkup, Message, CallbackQuery
 
 import telecopter.database as db
 from telecopter.logger import setup_logger
-from telecopter.config import ADMIN_GROUP_CHAT_ID
+from telecopter.config import ADMIN_CHAT_IDS
 from telecopter.constants import (
     USER_STATUS_APPROVED,
     USER_STATUS_PENDING_APPROVAL,
@@ -21,12 +21,13 @@ from telecopter.constants import (
     MSG_USER_UNKNOWN_STATUS_INFO,
 )
 
+
 logger = setup_logger(__name__)
 
 
 async def register_user_if_not_exists(aiogram_user: Optional[AiogramUser], chat_id: int, bot: Bot):
     if aiogram_user:
-        is_bot_admin_flag = await is_admin(aiogram_user.id, bot)
+        is_bot_admin_flag = await is_admin(aiogram_user.id)
         await db.add_or_update_user(
             user_id=aiogram_user.id,
             chat_id=chat_id,
@@ -39,75 +40,57 @@ async def register_user_if_not_exists(aiogram_user: Optional[AiogramUser], chat_
         logger.warning("could not register user, aiogram user object is none for chat_id %s.", chat_id)
 
 
-async def is_admin(user_id: int, bot: Bot) -> bool:
-    if not ADMIN_GROUP_CHAT_ID:
-        logger.debug("admin_group_chat_id not configured. user %s considered not admin.", user_id)
+async def is_admin(user_id: int) -> bool:
+    if not ADMIN_CHAT_IDS:
+        logger.debug("ADMIN_CHAT_IDS not configured. User %s considered not admin.", user_id)
         return False
-    try:
-        member = await bot.get_chat_member(chat_id=ADMIN_GROUP_CHAT_ID, user_id=user_id)
-        allowed_statuses = [
-            ChatMemberStatus.CREATOR,
-            ChatMemberStatus.ADMINISTRATOR,
-        ]
-        if member.status in allowed_statuses:
-            logger.debug("user %s is admin in group %s (status: %s)", user_id, ADMIN_GROUP_CHAT_ID, member.status)
-            return True
-        else:
-            logger.debug("user %s is not admin in group %s (status: %s)", user_id, ADMIN_GROUP_CHAT_ID, member.status)
-            return False
-    except TelegramAPIError as e:
-        if (
-            "user not found" in str(e).lower()
-            or "chat not found" in str(e).lower()
-            or "member not found" in str(e).lower()
-        ):
-            logger.debug(
-                "telegram api error checking admin status for user %s in group %s: %s. assuming not admin.",
-                user_id,
-                ADMIN_GROUP_CHAT_ID,
-                e,
-            )
-        else:
-            logger.error(
-                "telegram api error checking admin status for user %s in group %s: %s. assuming not admin.",
-                user_id,
-                ADMIN_GROUP_CHAT_ID,
-                e,
-            )
-        return False
-    except Exception as e:
-        logger.error(
-            "unexpected error checking admin status for user %s in group %s: %s. assuming not admin.",
-            user_id,
-            ADMIN_GROUP_CHAT_ID,
-            e,
-        )
-        return False
+
+    is_user_admin = user_id in ADMIN_CHAT_IDS
+    if is_user_admin:
+        logger.debug("User %s is in ADMIN_CHAT_IDS and considered admin.", user_id)
+    else:
+        logger.debug("User %s is NOT in ADMIN_CHAT_IDS and considered not admin.", user_id)
+    return is_user_admin
 
 
 async def notify_admin_formatted(
     bot: Bot, formatted_text_object: Text, keyboard: Optional[InlineKeyboardMarkup] = None
 ):
-    if ADMIN_GROUP_CHAT_ID:
+    if not ADMIN_CHAT_IDS:
+        logger.warning("ADMIN_CHAT_IDS not configured. Cannot send admin notification.")
+        return
+
+    success_count = 0
+    failure_count = 0
+    for admin_id in ADMIN_CHAT_IDS:
         try:
             await bot.send_message(
-                chat_id=ADMIN_GROUP_CHAT_ID,
+                chat_id=admin_id,
                 text=formatted_text_object.as_markdown(),
                 parse_mode="MarkdownV2",
                 reply_markup=keyboard,
             )
+            logger.info("Sent notification to admin_id %s.", admin_id)
+            success_count += 1
+        except TelegramAPIError as e:
+            logger.error("Failed to send notification to admin_id %s: %s", admin_id, e)
+            failure_count += 1
         except Exception as e:
-            logger.error("failed to send notification to admin group %s: %s", ADMIN_GROUP_CHAT_ID, e)
-    else:
-        logger.warning("admin_group_chat_id not configured. cannot send admin notification.")
+            logger.error("Unexpected error sending notification to admin_id %s: %s", admin_id, e)
+            failure_count += 1
+        if len(ADMIN_CHAT_IDS) > 1:
+            await asyncio.sleep(0.1)
+
+    if failure_count > 0:
+        logger.warning(f"Admin notifications: {success_count} sent, {failure_count} failed.")
 
 
 async def ensure_user_approved(event: Union[Message, CallbackQuery], bot: Bot, state: FSMContext) -> bool:
     if not event.from_user:
         return False
 
-    is_bot_admin = await is_admin(event.from_user.id, bot)
-    if is_bot_admin:
+    is_bot_admin_flag = await is_admin(event.from_user.id)
+    if is_bot_admin_flag:
         return True
 
     user_status = await db.get_user_approval_status(event.from_user.id)

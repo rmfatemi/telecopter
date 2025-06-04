@@ -7,15 +7,14 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+import telecopter.database as db
 from telecopter.logger import setup_logger
 from telecopter.handlers.common_utils import (
     register_user_if_not_exists,
     is_admin,
     notify_admin_formatted,
     format_user_for_admin_notification,
-    ensure_user_approved,
 )
-import telecopter.database as db
 from telecopter.constants import (
     USER_STATUS_NEW,
     USER_STATUS_PENDING_APPROVAL,
@@ -49,27 +48,12 @@ from telecopter.constants import (
     MSG_NO_ACTIVE_OPERATION_MENU,
     MSG_NO_ACTIVE_OPERATION_ALERT,
     MSG_ACTION_CANCELLED_ALERT,
-    MSG_HELP_TITLE,
-    MSG_HELP_NAVIGATION,
-    MSG_HELP_REQUEST_MEDIA_ICON,
-    MSG_HELP_REQUEST_MEDIA_TITLE,
-    MSG_HELP_REQUEST_MEDIA_DESC,
-    MSG_HELP_MY_REQUESTS_ICON,
-    MSG_HELP_MY_REQUESTS_TITLE,
-    MSG_HELP_MY_REQUESTS_DESC,
-    MSG_HELP_REPORT_PROBLEM_ICON,
-    MSG_HELP_REPORT_PROBLEM_TITLE,
-    MSG_HELP_REPORT_PROBLEM_DESC,
-    MSG_HELP_START_ANYTIME,
-    MSG_HELP_CANCEL_ACTION,
-    MSG_HELP_ADMIN_INFO_ICON,
-    MSG_HELP_ADMIN_INFO_TITLE,
-    MSG_HELP_ADMIN_INFO_DESC,
     MSG_ERROR_PROCESSING_ACTION_ALERT,
     MSG_ADMIN_UNKNOWN_ACTION_ALERT,
     CALLBACK_ACTION_CANCEL,
     CALLBACK_MAIN_MENU_CANCEL_ACTION,
 )
+
 
 logger = setup_logger(__name__)
 
@@ -99,7 +83,7 @@ async def start_command_handler(message: Message, state: FSMContext, bot: Bot):
     user_id = message.from_user.id
     user_name = message.from_user.first_name
     approval_status = await db.get_user_approval_status(user_id)
-    is_bot_admin = await is_admin(user_id, bot)
+    is_bot_admin = await is_admin(user_id)
 
     if is_bot_admin:
         from telecopter.handlers.admin_panel import show_admin_panel
@@ -183,39 +167,6 @@ async def handle_user_access_request_cb(callback_query: CallbackQuery, bot: Bot,
     else:
         await callback_query.answer(MSG_ADMIN_UNKNOWN_ACTION_ALERT, show_alert=True)
         logger.warning("unknown user access request action: %s for user %s", action, user_id)
-
-
-async def help_command_logic(
-    event: Union[Message, CallbackQuery], state: FSMContext, bot: Bot, user_id_for_admin_check: int
-):
-    from telecopter.handlers.main_menu import show_main_menu_for_user
-
-    if not await ensure_user_approved(event, bot, state):
-        return
-
-    await state.clear()
-    help_text_content_list = [
-        Bold(MSG_HELP_TITLE),
-        Text(MSG_HELP_NAVIGATION),
-        Text(MSG_HELP_REQUEST_MEDIA_ICON),
-        Bold(MSG_HELP_REQUEST_MEDIA_TITLE),
-        Text(MSG_HELP_REQUEST_MEDIA_DESC),
-        Text(MSG_HELP_MY_REQUESTS_ICON),
-        Bold(MSG_HELP_MY_REQUESTS_TITLE),
-        Text(MSG_HELP_MY_REQUESTS_DESC),
-        Text(MSG_HELP_REPORT_PROBLEM_ICON),
-        Bold(MSG_HELP_REPORT_PROBLEM_TITLE),
-        Text(MSG_HELP_REPORT_PROBLEM_DESC),
-        Text(MSG_HELP_START_ANYTIME),
-        Text(MSG_HELP_CANCEL_ACTION),
-    ]
-    if await is_admin(user_id_for_admin_check, bot):
-        help_text_content_list.extend(
-            [Text(MSG_HELP_ADMIN_INFO_ICON), Bold(MSG_HELP_ADMIN_INFO_TITLE), Text(MSG_HELP_ADMIN_INFO_DESC)]
-        )
-
-    help_text_formatted = Text(*help_text_content_list)
-    await show_main_menu_for_user(event, bot, custom_text_html=help_text_formatted.as_html())
 
 
 @core_commands_router.message(Command("cancel"), StateFilter("*"))

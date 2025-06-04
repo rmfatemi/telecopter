@@ -8,20 +8,21 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardButton, InlineKeyboardMarkup
 
 from telecopter.logger import setup_logger
-from telecopter.handlers.core_commands import help_command_logic
-from telecopter.handlers.handler_states import RequestMediaStates
 from telecopter.handlers.common_utils import ensure_user_approved
+from telecopter.handlers.handler_states import RequestMediaStates, ReportProblemStates
 from telecopter.constants import (
     MSG_MAIN_MENU_DEFAULT_WELCOME,
     MSG_MAIN_MENU_BACK_WELCOME,
     PROMPT_MAIN_MENU_REQUEST_MEDIA,
     MSG_MAIN_MENU_MEDIA_SEARCH_UNAVAILABLE,
+    PROMPT_PROBLEM_DESCRIPTION,
     BTN_REQUEST_MEDIA,
     BTN_MY_REQUESTS,
     BTN_REPORT_PROBLEM,
-    BTN_HELP,
     BTN_CANCEL_ACTION,
+    CALLBACK_ACTION_CANCEL,
 )
+
 
 logger = setup_logger(__name__)
 
@@ -34,10 +35,9 @@ def get_user_main_menu_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text=BTN_REQUEST_MEDIA, callback_data="main_menu:request_media"),
         InlineKeyboardButton(text=BTN_MY_REQUESTS, callback_data="main_menu:my_requests"),
         InlineKeyboardButton(text=BTN_REPORT_PROBLEM, callback_data="main_menu:report_problem"),
-        InlineKeyboardButton(text=BTN_HELP, callback_data="main_menu:show_help"),
         InlineKeyboardButton(text=BTN_CANCEL_ACTION, callback_data="main_menu:cancel_current_action"),
     )
-    builder.adjust(2, 2, 1)
+    builder.adjust(2, 2)
     return builder.as_markup()
 
 
@@ -85,14 +85,6 @@ async def show_main_menu_for_user(
                     )
 
 
-@main_menu_router.callback_query(F.data == "main_menu:show_help")
-async def main_menu_help_cb(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
-    await callback_query.answer()
-    if not callback_query.from_user or not callback_query.message:
-        return
-    await help_command_logic(callback_query, state, bot, callback_query.from_user.id)
-
-
 @main_menu_router.callback_query(F.data == "main_menu:request_media")
 async def main_menu_request_media_cb(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
     if not callback_query.message or not callback_query.from_user:
@@ -109,7 +101,24 @@ async def main_menu_request_media_cb(callback_query: CallbackQuery, state: FSMCo
         return
 
     text_obj = Text(PROMPT_MAIN_MENU_REQUEST_MEDIA)
-    await callback_query.message.edit_text(text_obj.as_markdown(), reply_markup=None, parse_mode="MarkdownV2")
+    cancel_kb_builder = InlineKeyboardBuilder()
+    cancel_kb_builder.button(text=BTN_CANCEL_ACTION, callback_data=CALLBACK_ACTION_CANCEL)
+    try:
+        await callback_query.message.edit_text(
+            text_obj.as_markdown(), reply_markup=cancel_kb_builder.as_markup(), parse_mode="MarkdownV2"
+        )
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e).lower():
+            pass
+        else:
+            logger.warning(f"Could not edit message for request media: {e}. Sending new.")
+            if callback_query.message and callback_query.message.chat:
+                await bot.send_message(
+                    chat_id=callback_query.message.chat.id,
+                    text=text_obj.as_markdown(),
+                    reply_markup=cancel_kb_builder.as_markup(),
+                    parse_mode="MarkdownV2",
+                )
     await state.set_state(RequestMediaStates.typing_media_name)
 
 
@@ -122,18 +131,48 @@ async def main_menu_my_requests_cb(callback_query: CallbackQuery, state: FSMCont
     if not await ensure_user_approved(callback_query, bot, state):
         return
     await callback_query.answer()
-    await my_requests_entrypoint(callback_query.message, bot, state, is_callback=True)
+
+    await my_requests_entrypoint(
+        base_message=callback_query.message,
+        requesting_user_id=callback_query.from_user.id,
+        bot=bot,
+        state=state,
+        is_callback=True,
+    )
 
 
 @main_menu_router.callback_query(F.data == "main_menu:report_problem")
 async def main_menu_report_problem_cb(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
-    from .problem_report import report_command_entry_handler
-
     if not callback_query.message or not callback_query.from_user:
         return
 
+    if not await ensure_user_approved(callback_query, bot, state):
+        return
+
     await callback_query.answer()
-    await report_command_entry_handler(callback_query.message, state, bot, is_triggered_by_command=False)
+
+    text_obj = Text(PROMPT_PROBLEM_DESCRIPTION)
+    cancel_kb_builder = InlineKeyboardBuilder()
+    cancel_kb_builder.button(text=BTN_CANCEL_ACTION, callback_data=CALLBACK_ACTION_CANCEL)
+
+    try:
+        await callback_query.message.edit_text(
+            text_obj.as_markdown(), reply_markup=cancel_kb_builder.as_markup(), parse_mode="MarkdownV2"
+        )
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e).lower():
+            pass
+        else:
+            logger.warning(f"Could not edit message for report problem: {e}. Sending new.")
+            if callback_query.message and callback_query.message.chat:
+                await bot.send_message(
+                    chat_id=callback_query.message.chat.id,
+                    text=text_obj.as_markdown(),
+                    reply_markup=cancel_kb_builder.as_markup(),
+                    parse_mode="MarkdownV2",
+                )
+
+    await state.set_state(ReportProblemStates.typing_problem)
 
 
 @main_menu_router.callback_query(F.data == "main_menu:show_start_menu_from_my_requests")
