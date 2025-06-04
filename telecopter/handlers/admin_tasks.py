@@ -127,7 +127,7 @@ async def list_admin_tasks(message_to_edit: Message, acting_user_id: int, bot: B
                     submitter_name_disp = submitter_info.get("first_name") or str(task_user_id)
 
                 item_text_parts.append(
-                    Text(f"{media_problem_icon} ID:{req_id} \- {truncate_text(req_title, 35)} ({req_status})")
+                    Text(f"{media_problem_icon} ID: {req_id} - {truncate_text(req_title, 35)} ({req_status})")
                 )
                 item_text_parts.append(Text(f"\n   By: {submitter_name_disp}, On: {created_date}"))
                 tasks_keyboard_builder.button(
@@ -135,7 +135,7 @@ async def list_admin_tasks(message_to_edit: Message, acting_user_id: int, bot: B
                 )
 
             content_elements.append(as_list(*item_text_parts, sep=""))
-            content_elements.append(Text("\-\-\-"))
+            content_elements.append(Text("---"))
 
         tasks_keyboard_builder.adjust(1)
 

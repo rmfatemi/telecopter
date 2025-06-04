@@ -92,44 +92,44 @@ def format_request_for_admin(request_data: dict, user_info: Optional[dict] = Non
         if user_username:
             user_display_elements = [TextLink(text=f"@{user_username}", url=f"tg://user?id={user_id}")]
         elif user_fn:
-            user_display_elements = [Text(user_fn), Text(" (id: "), Code(str(user_id)), Text(")")]
+            user_display_elements = [Text(user_fn), Text(" (ID: "), Code(str(user_id)), Text(")")]
         else:
-            user_display_elements = [Text("user (id: "), Code(str(user_id)), Text(")")]
+            user_display_elements = [Text("User (id: "), Code(str(user_id)), Text(")")]
     else:
-        user_display_elements = [Text("unknown user")]
+        user_display_elements = [Text("Unknown user")]
 
     message_items: List[Union[Text, Bold, Italic, Code, TextLink]] = [
-        Bold("new request notification"),
-        Text(Bold("request id:"), " ", Code(str(req_id))),
-        Text(Bold("user:"), " ", *user_display_elements),
-        Text(Bold("type:"), " ", Text(req_type)),
-        Text(Bold("title/summary:"), " ", Text(req_title_raw)),
+        Bold("New Request Notification"),
+        Text(Bold("Request ID:"), " ", Code(str(req_id))),
+        Text(Bold("User:"), " ", *user_display_elements),
+        Text(Bold("Type:"), " ", Text(req_type)),
+        Text(Bold("Title/Summary:"), " ", Text(req_title_raw)),
     ]
 
     if req_type in ["movie", "tv"]:
         year = request_data.get("year")
         if year:
-            message_items.append(Text(Bold("year:"), " ", Text(str(year))))
+            message_items.append(Text(Bold("Year:"), " ", Text(str(year))))
 
         tmdb_id = request_data.get("tmdb_id")
 
         if tmdb_id is not None:
             tmdb_url = make_tmdb_url(tmdb_id, req_type)
             if tmdb_url:
-                message_items.append(Text(Bold("tmdb:"), " ", TextLink("link", url=tmdb_url)))
+                message_items.append(Text(Bold("TMDB:"), " ", TextLink("link", url=tmdb_url)))
 
         imdb_id_val = request_data.get("imdb_id")
         if imdb_id_val:
             imdb_url = make_imdb_url(imdb_id_val)
             if imdb_url:
-                message_items.append(Text(Bold("imdb:"), " ", TextLink("link", url=imdb_url)))
+                message_items.append(Text(Bold("IMDB:"), " ", TextLink("link", url=imdb_url)))
 
         if user_query_raw and user_query_raw != "n/a":
-            message_items.append(Text(Bold("user query:"), " ", Code(user_query_raw)))
+            message_items.append(Text(Bold("User query:"), " ", Code(user_query_raw)))
 
     if user_note_raw and user_note_raw != "n/a":
-        message_items.append(Text(Bold("user note:"), " ", Italic(user_note_raw)))
+        message_items.append(Text(Bold("User note:"), " ", Italic(user_note_raw)))
 
-    message_items.append(Text(Bold("status:"), " ", Text(req_status_raw)))
+    message_items.append(Text(Bold("Status:"), " ", Text(req_status_raw)))
 
     return as_list(*message_items, sep="\n\n")
