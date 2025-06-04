@@ -117,7 +117,7 @@ async def list_admin_tasks(message_to_edit: Message, acting_user_id: int, bot: B
                         Code(str(req_id)),
                         ")",
                     ),
-                    Text("\n   Status: ", Italic(req['status']), ", For User ID: ", Code(str(task_user_id)))
+                    Text("\n   Status: ", Italic(req["status"]), ", For User ID: ", Code(str(task_user_id))),
                 ]
                 tasks_keyboard_builder.button(
                     text=BTN_REVIEW_USER_APPROVAL_TASK,
@@ -133,9 +133,7 @@ async def list_admin_tasks(message_to_edit: Message, acting_user_id: int, bot: B
                     submitter_name_disp = chosen_name or str(task_user_id)
 
                 item_text_parts = format_request_item_display_parts(
-                    req,
-                    view_context="admin_list_item",
-                    submitter_name_override=submitter_name_disp
+                    req, view_context="admin_list_item", submitter_name_override=submitter_name_disp
                 )
 
                 tasks_keyboard_builder.button(
@@ -159,9 +157,9 @@ async def list_admin_tasks(message_to_edit: Message, acting_user_id: int, bot: B
     )
 
     if (
-            content_elements
-            and isinstance(content_elements[-1], Text)
-            and content_elements[-1].render()[0] == MSG_ITEM_MESSAGE_DIVIDER
+        content_elements
+        and isinstance(content_elements[-1], Text)
+        and content_elements[-1].render()[0] == MSG_ITEM_MESSAGE_DIVIDER
     ):
         content_elements.pop()
 

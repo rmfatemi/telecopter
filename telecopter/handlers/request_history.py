@@ -45,7 +45,7 @@ def get_my_requests_pagination_keyboard(page: int, total_pages: int) -> Optional
 
 
 async def my_requests_entrypoint(
-        base_message: Message, requesting_user_id: int, bot: Bot, state: FSMContext, is_callback: bool = False
+    base_message: Message, requesting_user_id: int, bot: Bot, state: FSMContext, is_callback: bool = False
 ):
     if not base_message or not base_message.chat:
         logger.warning("my_requests_entrypoint called with invalid base_message or chat.")
@@ -86,7 +86,7 @@ async def my_requests_page_cb(callback_query: CallbackQuery, state: FSMContext, 
 
 
 async def _send_my_requests_page_logic(
-        user_id: int, page: int, chat_id: int, bot: Bot, original_message_id: int, is_callback: bool, state: FSMContext
+    user_id: int, page: int, chat_id: int, bot: Bot, original_message_id: int, is_callback: bool, state: FSMContext
 ):
     await state.clear()
 
@@ -121,8 +121,11 @@ async def _send_my_requests_page_logic(
                 page_content_elements.append(as_list(*current_item_display_parts, sep=""))
                 page_content_elements.append(Text(MSG_ITEM_MESSAGE_DIVIDER))
 
-        if page_content_elements and isinstance(page_content_elements[-1], Text) and page_content_elements[-1].render()[
-            0] == MSG_ITEM_MESSAGE_DIVIDER:
+        if (
+            page_content_elements
+            and isinstance(page_content_elements[-1], Text)
+            and page_content_elements[-1].render()[0] == MSG_ITEM_MESSAGE_DIVIDER
+        ):
             page_content_elements.pop()
 
     pagination_kb = get_my_requests_pagination_keyboard(page, total_pages)

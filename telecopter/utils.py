@@ -173,9 +173,7 @@ def format_request_for_admin(request_data: Dict, user_info: Optional[Dict] = Non
 
 
 def format_request_item_display_parts(
-        request_data: Dict[str, Any],
-        view_context: str,
-        submitter_name_override: Optional[str] = None
+    request_data: Dict[str, Any], view_context: str, submitter_name_override: Optional[str] = None
 ) -> List[Union[Text, Bold, Italic, Code]]:
     req_id = request_data.get("request_id")
     req_type = request_data["request_type"]

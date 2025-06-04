@@ -95,8 +95,9 @@ async def process_announcement_type_cb(callback_query: CallbackQuery, state: FSM
     prompt_text_obj = Text(prompt_text_str)
     if callback_query.message:
         try:
-            await callback_query.message.edit_text(prompt_text_obj.as_markdown(), parse_mode="MarkdownV2",
-                                                   reply_markup=None)
+            await callback_query.message.edit_text(
+                prompt_text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None
+            )
         except Exception as e:
             logger.debug(f"Could not edit message for typing prompt: {e}")
 
@@ -121,8 +122,7 @@ async def process_announcement_message_text(message: Message, state: FSMContext,
     chat_ids = await db.get_all_user_chat_ids()
     admin_user_id = message.from_user.id
 
-    if not chat_ids or (len(chat_ids) == 1 and admin_user_id in chat_ids and len(
-            chat_ids) > 0):
+    if not chat_ids or (len(chat_ids) == 1 and admin_user_id in chat_ids and len(chat_ids) > 0):
         response_text_obj = Text(MSG_ADMIN_ANNOUNCE_NO_USERS)
         await message.reply(response_text_obj.as_markdown(), parse_mode="MarkdownV2")
         await show_admin_panel(message, bot)
