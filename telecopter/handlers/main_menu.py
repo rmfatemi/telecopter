@@ -1,24 +1,19 @@
-from typing import Optional, Union
-
 from aiogram import Router, F, Bot
+from aiogram.types import CallbackQuery
 from aiogram.utils.formatting import Text
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from telecopter.logger import setup_logger
 from telecopter.handlers.common_utils import ensure_user_approved
+from telecopter.handlers.menu_utils import show_main_menu_for_user
 from telecopter.handlers.handler_states import RequestMediaStates, ReportProblemStates
 from telecopter.constants import (
-    MSG_MAIN_MENU_DEFAULT_WELCOME,
     MSG_MAIN_MENU_BACK_WELCOME,
     PROMPT_MAIN_MENU_REQUEST_MEDIA,
     MSG_MAIN_MENU_MEDIA_SEARCH_UNAVAILABLE,
     PROMPT_PROBLEM_DESCRIPTION,
-    BTN_REQUEST_MEDIA,
-    BTN_MY_REQUESTS,
-    BTN_REPORT_PROBLEM,
     BTN_CANCEL_ACTION,
     CALLBACK_ACTION_CANCEL,
 )
@@ -27,62 +22,6 @@ from telecopter.constants import (
 logger = setup_logger(__name__)
 
 main_menu_router = Router(name="main_menu_router")
-
-
-def get_user_main_menu_keyboard() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    builder.add(
-        InlineKeyboardButton(text=BTN_REQUEST_MEDIA, callback_data="main_menu:request_media"),
-        InlineKeyboardButton(text=BTN_MY_REQUESTS, callback_data="main_menu:my_requests"),
-        InlineKeyboardButton(text=BTN_REPORT_PROBLEM, callback_data="main_menu:report_problem"),
-        InlineKeyboardButton(text=BTN_CANCEL_ACTION, callback_data="main_menu:cancel_current_action"),
-    )
-    builder.adjust(2, 2)
-    return builder.as_markup()
-
-
-async def show_main_menu_for_user(
-    event: Union[Message, CallbackQuery],
-    bot: Bot,
-    custom_text_str: Optional[str] = None,
-    custom_text_md: Optional[str] = None,
-    custom_text_html: Optional[str] = None,
-    custom_text_obj: Optional[Text] = None,
-):
-    user_first_name = event.from_user.first_name if event.from_user else "there"
-    reply_markup = get_user_main_menu_keyboard()
-
-    text_to_send: str
-    parse_mode_to_use: Optional[str] = "MarkdownV2"
-
-    if custom_text_obj:
-        text_to_send = custom_text_obj.as_markdown()
-    elif custom_text_html:
-        text_to_send = custom_text_html
-        parse_mode_to_use = "HTML"
-    elif custom_text_md:
-        text_to_send = custom_text_md
-    elif custom_text_str:
-        text_to_send = Text(custom_text_str).as_markdown()
-    else:
-        text_to_send = Text(MSG_MAIN_MENU_DEFAULT_WELCOME.format(user_first_name=user_first_name)).as_markdown()
-
-    if isinstance(event, Message) and event.chat:
-        await bot.send_message(event.chat.id, text_to_send, reply_markup=reply_markup, parse_mode=parse_mode_to_use)
-    elif isinstance(event, CallbackQuery) and event.message:
-        try:
-            await event.message.edit_text(text_to_send, reply_markup=reply_markup, parse_mode=parse_mode_to_use)
-            await event.answer()
-        except TelegramBadRequest as e:
-            if "message is not modified" in str(e).lower():
-                await event.answer()
-            else:
-                logger.warning("could not edit message to show main menu: %s. sending new.", e)
-                await event.answer()
-                if event.message.chat:
-                    await bot.send_message(
-                        event.message.chat.id, text_to_send, reply_markup=reply_markup, parse_mode=parse_mode_to_use
-                    )
 
 
 @main_menu_router.callback_query(F.data == "main_menu:request_media")

@@ -4,29 +4,27 @@ from aiogram import Router, F, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.formatting import Text, Bold
 from aiogram.types import Message, CallbackQuery
-from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.filters import Command, CommandStart, StateFilter
 
 import telecopter.database as db
 from telecopter.logger import setup_logger
 from telecopter.handlers.common_utils import (
-    register_user_if_not_exists,
-    is_admin,
-    notify_admin_formatted,
     format_user_for_admin_notification,
+    register_user_if_not_exists,
+    notify_admin_formatted,
+    IsAdminFilter,
+    is_admin,
 )
+from telecopter.handlers.menu_utils import show_admin_panel, show_main_menu_for_user
 from telecopter.constants import (
     USER_STATUS_NEW,
     USER_STATUS_PENDING_APPROVAL,
     USER_STATUS_APPROVED,
     USER_STATUS_REJECTED,
-    REQUEST_TYPE_USER_APPROVAL,
     CALLBACK_USER_ACCESS_REQUEST_PREFIX,
     CALLBACK_USER_ACCESS_REQUEST_ACTION,
     CALLBACK_USER_ACCESS_LATER_ACTION,
-    CALLBACK_USER_APPROVAL_TASK_ACTION_PREFIX,
-    CALLBACK_USER_APPROVAL_TASK_APPROVE,
-    CALLBACK_USER_APPROVAL_TASK_REJECT,
     MSG_START_WELCOME_NEW_PROMPT,
     MSG_START_PENDING_APPROVAL,
     MSG_START_REJECTED,
@@ -37,13 +35,11 @@ from telecopter.constants import (
     MSG_USER_ACCESS_DEFERRED_ALERT,
     BTN_REQUEST_ACCESS,
     BTN_MAYBE_LATER,
-    MSG_ADMIN_NOTIFY_NEW_USER_TASK_TITLE,
+    MSG_ADMIN_NOTIFY_NEW_USER,
     MSG_ADMIN_NOTIFY_USER_LABEL,
-    MSG_ADMIN_NOTIFY_USER_ID_LABEL,
-    MSG_ADMIN_NOTIFY_TASK_ID_LABEL,
     MSG_ADMIN_NOTIFY_PLEA,
-    BTN_APPROVE_USER_ACTION,
-    BTN_REJECT_USER_ACTION,
+    BTN_APPROVE_USER,
+    BTN_REJECT_USER,
     MSG_ACTION_CANCELLED_MENU,
     MSG_NO_ACTIVE_OPERATION_MENU,
     MSG_NO_ACTIVE_OPERATION_ALERT,
@@ -52,6 +48,9 @@ from telecopter.constants import (
     MSG_ADMIN_UNKNOWN_ACTION_ALERT,
     CALLBACK_ACTION_CANCEL,
     CALLBACK_MAIN_MENU_CANCEL_ACTION,
+    CALLBACK_MANAGE_USERS_PREFIX,
+    CALLBACK_MANAGE_USERS_APPROVE,
+    CALLBACK_MANAGE_USERS_REJECT,
 )
 
 
@@ -73,8 +72,14 @@ def get_request_access_keyboard() -> InlineKeyboardBuilder:
     return builder
 
 
+@core_commands_router.message(CommandStart(), IsAdminFilter())
+async def start_admin(message: Message, bot: Bot):
+    logger.info(f"Admin user {message.from_user.id} initiated /start.")
+    await show_admin_panel(message, bot)
+
+
 @core_commands_router.message(CommandStart())
-async def start_command_handler(message: Message, state: FSMContext, bot: Bot):
+async def start_user(message: Message, state: FSMContext, bot: Bot):
     await state.clear()
     if not message.from_user:
         return
@@ -83,17 +88,8 @@ async def start_command_handler(message: Message, state: FSMContext, bot: Bot):
     user_id = message.from_user.id
     user_name = message.from_user.first_name
     approval_status = await db.get_user_approval_status(user_id)
-    is_bot_admin = await is_admin(user_id)
-
-    if is_bot_admin:
-        from telecopter.handlers.admin_panel import show_admin_panel
-
-        await show_admin_panel(message, bot)
-        return
 
     if approval_status == USER_STATUS_APPROVED:
-        from telecopter.handlers.main_menu import show_main_menu_for_user
-
         await show_main_menu_for_user(message, bot)
     elif approval_status == USER_STATUS_PENDING_APPROVAL:
         text_obj = Text(MSG_START_PENDING_APPROVAL.format(user_name=user_name))
@@ -119,16 +115,10 @@ async def handle_user_access_request_cb(callback_query: CallbackQuery, bot: Bot,
 
     action = callback_query.data.split(":")[1]
     user_id = callback_query.from_user.id
-    user_name = callback_query.from_user.full_name
 
     if action == CALLBACK_USER_ACCESS_REQUEST_ACTION:
         await db.update_user_approval_status(user_id, USER_STATUS_PENDING_APPROVAL)
-
-        task_title = f"User Approval: {user_name} ({user_id})"
-        task_id = await db.add_request(
-            user_id=user_id, request_type=REQUEST_TYPE_USER_APPROVAL, title=task_title, status="pending_admin"
-        )
-        logger.info("created user_approval task (id: %s) for user %s", task_id, user_id)
+        logger.info("user %s requested access, status set to pending_approval.", user_id)
 
         text_obj = Text(MSG_USER_ACCESS_REQUEST_SUBMITTED)
         await callback_query.message.edit_text(text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None)
@@ -136,26 +126,20 @@ async def handle_user_access_request_cb(callback_query: CallbackQuery, bot: Bot,
 
         user_details_formatted_text = await format_user_for_admin_notification(user_id, bot)
         admin_notify_text_obj = Text(
-            Bold(MSG_ADMIN_NOTIFY_NEW_USER_TASK_TITLE),
+            Bold(MSG_ADMIN_NOTIFY_NEW_USER),
             "\n\n",
             MSG_ADMIN_NOTIFY_USER_LABEL,
             user_details_formatted_text,
-            MSG_ADMIN_NOTIFY_USER_ID_LABEL.format(user_id=user_id),
-            MSG_ADMIN_NOTIFY_TASK_ID_LABEL.format(task_id=task_id),
             MSG_ADMIN_NOTIFY_PLEA,
         )
         admin_keyboard = InlineKeyboardBuilder()
         admin_keyboard.button(
-            text=BTN_APPROVE_USER_ACTION,
-            callback_data=(
-                f"{CALLBACK_USER_APPROVAL_TASK_ACTION_PREFIX}:{CALLBACK_USER_APPROVAL_TASK_APPROVE}:{user_id}:{task_id}"
-            ),
+            text=BTN_APPROVE_USER,
+            callback_data=f"{CALLBACK_MANAGE_USERS_PREFIX}:{CALLBACK_MANAGE_USERS_APPROVE}:{user_id}",
         )
         admin_keyboard.button(
-            text=BTN_REJECT_USER_ACTION,
-            callback_data=(
-                f"{CALLBACK_USER_APPROVAL_TASK_ACTION_PREFIX}:{CALLBACK_USER_APPROVAL_TASK_REJECT}:{user_id}:{task_id}"
-            ),
+            text=BTN_REJECT_USER,
+            callback_data=f"{CALLBACK_MANAGE_USERS_PREFIX}:{CALLBACK_MANAGE_USERS_REJECT}:{user_id}",
         )
         admin_keyboard.adjust(1)
         await notify_admin_formatted(bot, admin_notify_text_obj, admin_keyboard.as_markup())
@@ -174,23 +158,25 @@ async def handle_user_access_request_cb(callback_query: CallbackQuery, bot: Bot,
     F.data.in_({CALLBACK_ACTION_CANCEL, CALLBACK_MAIN_MENU_CANCEL_ACTION}), StateFilter("*")
 )
 async def universal_cancel_handler(event: Union[Message, CallbackQuery], state: FSMContext, bot: Bot):
-    from telecopter.handlers.main_menu import show_main_menu_for_user
+    user = event.from_user
+    if not user:
+        return
 
-    user_id = event.from_user.id if event.from_user else "unknown"
-    current_state_str = await state.get_state()
+    is_in_state = await state.get_state() is not None
 
-    if current_state_str is not None:
-        logger.info("user %s cancelled conversation from state %s.", user_id, current_state_str)
+    if is_in_state:
+        logger.info("user %s cancelled conversation.", user.id)
         await state.clear()
-        if isinstance(event, CallbackQuery) and event.message:
+        if isinstance(event, CallbackQuery):
             await event.answer(MSG_ACTION_CANCELLED_ALERT, show_alert=False)
-
-        text_obj = Text(MSG_ACTION_CANCELLED_MENU)
-        await show_main_menu_for_user(event, bot, custom_text_obj=text_obj)
     else:
-        logger.info("user %s used cancel outside of a conversation.", user_id)
+        logger.info("user %s used cancel outside of a conversation.", user.id)
         if isinstance(event, CallbackQuery):
             await event.answer(MSG_NO_ACTIVE_OPERATION_ALERT, show_alert=False)
 
-        text_obj = Text(MSG_NO_ACTIVE_OPERATION_MENU)
+    if await is_admin(user.id):
+        await show_admin_panel(event, bot)
+    else:
+        message_text = MSG_ACTION_CANCELLED_MENU if is_in_state else MSG_NO_ACTIVE_OPERATION_MENU
+        text_obj = Text(message_text)
         await show_main_menu_for_user(event, bot, custom_text_obj=text_obj)

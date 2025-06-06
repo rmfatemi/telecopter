@@ -9,9 +9,9 @@ import telecopter.database as db
 from telecopter.logger import setup_logger
 from telecopter.config import MAX_REPORT_LENGTH
 from telecopter.handlers.handler_states import ReportProblemStates
-from telecopter.handlers.common_utils import notify_admin_formatted, ensure_user_approved
 from telecopter.utils import truncate_text, format_request_for_admin
 from telecopter.handlers.admin_moderate import get_admin_report_action_keyboard
+from telecopter.handlers.common_utils import notify_admin_formatted, ensure_user_approved
 from telecopter.constants import (
     MSG_REPORT_SUBMITTED,
     MSG_REPORT_SUCCESS,

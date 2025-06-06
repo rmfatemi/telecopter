@@ -9,6 +9,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardButton
 
 import telecopter.database as db
 from telecopter.logger import setup_logger
+from telecopter.handlers.menu_utils import show_admin_panel
 from telecopter.handlers.handler_states import AdminAnnounceStates
 from telecopter.constants import (
     PROMPT_ADMIN_ANNOUNCE_TYPE,
@@ -74,8 +75,6 @@ async def process_announcement_type_cb(callback_query: CallbackQuery, state: FSM
     await callback_query.answer()
 
     if action == "cancel_to_panel":
-        from .admin_panel import show_admin_panel
-
         await state.clear()
         if callback_query.message:
             try:
@@ -105,8 +104,6 @@ async def process_announcement_type_cb(callback_query: CallbackQuery, state: FSM
 
 @admin_announce_router.message(StateFilter(AdminAnnounceStates.typing_message), F.text)
 async def process_announcement_message_text(message: Message, state: FSMContext, bot: Bot):
-    from .admin_panel import show_admin_panel
-
     if not message.from_user or not message.text:
         return
 

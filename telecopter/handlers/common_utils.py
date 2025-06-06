@@ -3,9 +3,10 @@ import asyncio
 from typing import Optional, Union
 
 from aiogram import Bot
+from aiogram.filters import Filter
 from aiogram.fsm.context import FSMContext
-from aiogram.utils.formatting import Text, TextLink
 from aiogram.exceptions import TelegramAPIError
+from aiogram.utils.formatting import Text, TextLink
 from aiogram.types import User as AiogramUser, InlineKeyboardMarkup, Message, CallbackQuery
 
 import telecopter.database as db
@@ -24,6 +25,13 @@ from telecopter.constants import (
 
 
 logger = setup_logger(__name__)
+
+
+class IsAdminFilter(Filter):
+    async def __call__(self, message: Message) -> bool:
+        if not message.from_user:
+            return False
+        return await is_admin(message.from_user.id)
 
 
 async def register_user_if_not_exists(aiogram_user: Optional[AiogramUser], chat_id: int, bot: Bot):

@@ -8,12 +8,10 @@ from telecopter.constants import (
     MEDIA_TYPE_MOVIE,
     MEDIA_TYPE_TV,
     MEDIA_TYPE_MANUAL,
-    REQUEST_TYPE_USER_APPROVAL,
     ICON_MOVIE,
     ICON_TV_SHOW,
     ICON_MANUAL_REQUEST,
     ICON_PROBLEM_REPORT,
-    ICON_USER_APPROVAL,
     ICON_GENERIC_REQUEST,
 )
 
@@ -130,9 +128,6 @@ def format_request_for_admin(request_data: Dict, user_info: Optional[Dict] = Non
     elif req_type == "problem":
         req_type_icon_str = ICON_PROBLEM_REPORT
         req_type_display_name = "Problem Report"
-    elif req_type == REQUEST_TYPE_USER_APPROVAL:
-        req_type_icon_str = ICON_USER_APPROVAL
-        req_type_display_name = "User Approval"
     else:
         req_type_icon_str = ICON_GENERIC_REQUEST
         req_type_display_name = req_type.replace("_", " ").title() if req_type else "Unknown Type"
@@ -199,26 +194,15 @@ def format_request_item_display_parts(
     elif req_type == "problem":
         item_icon_str = ICON_PROBLEM_REPORT
         request_type_display_str = "Problem Report"
-    elif req_type == REQUEST_TYPE_USER_APPROVAL:
-        item_icon_str = ICON_USER_APPROVAL
-        request_type_display_str = "User Approval"
     else:
         item_icon_str = ICON_GENERIC_REQUEST
         request_type_display_str = req_type.replace("_", " ").title() if req_type else "Task"
 
-    display_parts: List[Union[Text, Bold, Italic, Code]] = []
-
-    if view_context == "admin_list_item" and req_type == REQUEST_TYPE_USER_APPROVAL:
-        display_parts.append(Text(item_icon_str, " ", Bold(request_type_display_str)))
-        display_parts.append(Text("\n", Bold("Details: "), Italic(truncate_text(req_title, 60))))
-        if req_id:
-            display_parts.append(Text("\n", Bold("Task ID: "), Code(str(req_id))))
-    else:
-        display_parts.append(Text(item_icon_str, " ", Bold(request_type_display_str)))
-        title_trunc_length = 40 if view_context == "admin_list_item" else 50
-        display_parts.append(Text("\n", Bold("Title: "), Italic(truncate_text(req_title, title_trunc_length))))
-        if view_context == "admin_list_item" and req_id:
-            display_parts.append(Text("\n", Bold("ID: "), Code(str(req_id))))
+    display_parts: List[Union[Text, Bold, Italic, Code]] = [Text(item_icon_str, " ", Bold(request_type_display_str))]
+    title_trunc_length = 40 if view_context == "admin_list_item" else 50
+    display_parts.append(Text("\n", Bold("Title: "), Italic(truncate_text(req_title, title_trunc_length))))
+    if view_context == "admin_list_item" and req_id:
+        display_parts.append(Text("\n", Bold("ID: "), Code(str(req_id))))
 
     display_parts.append(Text("\n", Bold("Status: "), Italic(req_status)))
 

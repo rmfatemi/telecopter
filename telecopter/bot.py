@@ -5,8 +5,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.client.default import DefaultBotProperties
 
 from telecopter.logger import setup_logger
-from telecopter.config import TELEGRAM_BOT_TOKEN
 from telecopter.database import initialize_database
+from telecopter.config import TELEGRAM_BOT_TOKEN, ADMIN_CHAT_IDS
 from telecopter.constants import CMD_START_DESCRIPTION, CMD_CANCEL_DESCRIPTION
 
 from telecopter.handlers.main_menu import main_menu_router
@@ -33,10 +33,21 @@ async def set_bot_commands(bot: Bot):
     ]
     try:
         await bot.set_my_commands(user_commands, scope=types.BotCommandScopeAllPrivateChats())
-        logger.info("user bot commands set successfully for private chats.")
+        logger.info("Default user bot commands set successfully for all private chats.")
     except Exception as e:
-        logger.error("failed to set user bot commands: %s", e)
-    logger.info("admin commands can be accessed via /start or /admin in pm.")
+        logger.error("Failed to set default user bot commands: %s", e)
+
+    if ADMIN_CHAT_IDS:
+        admin_commands = [
+            types.BotCommand(command="start", description="🧑‍💼 Open Admin Panel"),
+            types.BotCommand(command="cancel", description=CMD_CANCEL_DESCRIPTION),
+        ]
+        for admin_id in ADMIN_CHAT_IDS:
+            try:
+                await bot.set_my_commands(admin_commands, scope=types.BotCommandScopeChat(chat_id=admin_id))
+                logger.info(f"Admin commands set for admin_id {admin_id}.")
+            except Exception as e:
+                logger.error(f"Failed to set commands for admin_id {admin_id}: %s", e)
 
 
 async def main_async():
