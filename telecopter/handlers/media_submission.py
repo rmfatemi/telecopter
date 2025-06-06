@@ -9,6 +9,7 @@ import telecopter.database as db
 from telecopter.logger import setup_logger
 from telecopter.config import MAX_NOTE_LENGTH
 from telecopter.handlers.handler_states import RequestMediaStates
+from telecopter.handlers.menu_utils import show_main_menu_for_user
 from telecopter.handlers.common_utils import notify_admin_formatted
 from telecopter.utils import truncate_text, format_request_for_admin
 from telecopter.handlers.admin_moderate import get_admin_request_action_keyboard
@@ -45,8 +46,6 @@ def get_request_confirm_keyboard() -> InlineKeyboardMarkup:
 
 @media_submission_router.message(StateFilter(RequestMediaStates.typing_manual_request_description), F.text)
 async def manual_request_description_handler(message: Message, state: FSMContext, bot: Bot):
-    from telecopter.handlers.main_menu import show_main_menu_for_user
-
     if not message.from_user or not message.text:
         reply_text_obj = Text(PROMPT_MANUAL_REQUEST)
         await message.answer(reply_text_obj.as_markdown(), parse_mode="MarkdownV2")
@@ -87,8 +86,6 @@ async def manual_request_description_handler(message: Message, state: FSMContext
 
 @media_submission_router.callback_query(StateFilter(RequestMediaStates.confirm_media), F.data.startswith("req_conf:"))
 async def confirm_media_request_cb(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
-    from telecopter.handlers.main_menu import show_main_menu_for_user
-
     await callback_query.answer()
     if not callback_query.from_user or not callback_query.message:
         return
@@ -142,8 +139,6 @@ async def confirm_media_request_cb(callback_query: CallbackQuery, state: FSMCont
 
 @media_submission_router.message(StateFilter(RequestMediaStates.typing_user_note), F.text)
 async def user_note_handler(message: Message, state: FSMContext, bot: Bot):
-    from telecopter.handlers.main_menu import show_main_menu_for_user
-
     if not message.from_user or not message.text:
         return
 

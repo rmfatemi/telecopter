@@ -8,6 +8,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from telecopter.logger import setup_logger
 from telecopter.handlers.common_utils import ensure_user_approved
 from telecopter.handlers.menu_utils import show_main_menu_for_user
+from telecopter.handlers.request_history import my_requests_entrypoint
 from telecopter.handlers.handler_states import RequestMediaStates, ReportProblemStates
 from telecopter.constants import (
     MSG_MAIN_MENU_BACK_WELCOME,
@@ -63,8 +64,6 @@ async def main_menu_request_media_cb(callback_query: CallbackQuery, state: FSMCo
 
 @main_menu_router.callback_query(F.data == "main_menu:my_requests")
 async def main_menu_my_requests_cb(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
-    from .request_history import my_requests_entrypoint
-
     if not callback_query.message or not callback_query.from_user:
         return
     if not await ensure_user_approved(callback_query, bot, state):

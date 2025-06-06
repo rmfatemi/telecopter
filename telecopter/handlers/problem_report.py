@@ -9,6 +9,7 @@ import telecopter.database as db
 from telecopter.logger import setup_logger
 from telecopter.config import MAX_REPORT_LENGTH
 from telecopter.handlers.handler_states import ReportProblemStates
+from telecopter.handlers.menu_utils import show_main_menu_for_user
 from telecopter.utils import truncate_text, format_request_for_admin
 from telecopter.handlers.admin_moderate import get_admin_report_action_keyboard
 from telecopter.handlers.common_utils import notify_admin_formatted, ensure_user_approved
@@ -29,8 +30,6 @@ problem_report_router = Router(name="problem_report_router")
 
 
 async def _submit_problem_report_logic(message: Message, problem_text: str, state: FSMContext, bot_instance: Bot):
-    from .main_menu import show_main_menu_for_user
-
     if not message.from_user:
         await state.clear()
         return
