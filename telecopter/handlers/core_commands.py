@@ -74,7 +74,7 @@ def get_request_access_keyboard() -> InlineKeyboardBuilder:
 
 @core_commands_router.message(CommandStart(), IsAdminFilter())
 async def start_admin(message: Message, bot: Bot):
-    logger.info(f"Admin user {message.from_user.id} initiated /start.")
+    logger.info(f"admin user {message.from_user.id} initiated /start.")
     await show_admin_panel(message, bot)
 
 

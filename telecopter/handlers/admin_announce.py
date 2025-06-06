@@ -99,7 +99,7 @@ async def process_announcement_type_cb(callback_query: CallbackQuery, state: FSM
                 prompt_text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None
             )
         except Exception as e:
-            logger.debug(f"Could not edit message for typing prompt: {e}")
+            logger.debug(f"could not edit message for typing prompt: {e}")
 
 
 @admin_announce_router.message(StateFilter(AdminAnnounceStates.typing_message), F.text)

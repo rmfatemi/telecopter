@@ -192,7 +192,7 @@ async def handle_user_approval_action(callback_query: CallbackQuery, bot: Bot):
             parse_mode="MarkdownV2"
         )
     except Exception as e:
-        logger.error(f"Failed to notify user {target_user_id} about approval status change: {e}")
+        logger.error(f"failed to notify user {target_user_id} about approval status change: {e}")
         admin_confirm_msg += MSG_ADMIN_USER_NOTIFY_FAIL_SUFFIX
 
     await callback_query.answer(admin_confirm_msg, show_alert=True)

@@ -33,9 +33,9 @@ async def set_bot_commands(bot: Bot):
     ]
     try:
         await bot.set_my_commands(user_commands, scope=types.BotCommandScopeAllPrivateChats())
-        logger.info("Default user bot commands set successfully for all private chats.")
+        logger.info("default user bot commands set successfully for all private chats.")
     except Exception as e:
-        logger.error("Failed to set default user bot commands: %s", e)
+        logger.error("failed to set default user bot commands: %s", e)
 
     if ADMIN_CHAT_IDS:
         admin_commands = [
@@ -45,9 +45,9 @@ async def set_bot_commands(bot: Bot):
         for admin_id in ADMIN_CHAT_IDS:
             try:
                 await bot.set_my_commands(admin_commands, scope=types.BotCommandScopeChat(chat_id=admin_id))
-                logger.info(f"Admin commands set for admin_id {admin_id}.")
+                logger.info(f"admin commands set for admin_id {admin_id}.")
             except Exception as e:
-                logger.error(f"Failed to set commands for admin_id {admin_id}: %s", e)
+                logger.error(f"failed to set commands for admin_id {admin_id}: %s", e)
 
 
 async def main_async():

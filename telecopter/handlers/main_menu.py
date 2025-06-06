@@ -50,7 +50,7 @@ async def main_menu_request_media_cb(callback_query: CallbackQuery, state: FSMCo
         if "message is not modified" in str(e).lower():
             pass
         else:
-            logger.warning(f"Could not edit message for request media: {e}. Sending new.")
+            logger.warning(f"could not edit message for request media: {e}. Sending new.")
             if callback_query.message and callback_query.message.chat:
                 await bot.send_message(
                     chat_id=callback_query.message.chat.id,
@@ -102,7 +102,7 @@ async def main_menu_report_problem_cb(callback_query: CallbackQuery, state: FSMC
         if "message is not modified" in str(e).lower():
             pass
         else:
-            logger.warning(f"Could not edit message for report problem: {e}. Sending new.")
+            logger.warning(f"could not edit message for report problem: {e}. Sending new.")
             if callback_query.message and callback_query.message.chat:
                 await bot.send_message(
                     chat_id=callback_query.message.chat.id,

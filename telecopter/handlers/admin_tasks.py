@@ -163,7 +163,7 @@ async def admin_tasks_page_cb(callback_query: CallbackQuery, bot: Bot, state: FS
         page = int(page_str)
     except (IndexError, ValueError):
         logger.warning(f"invalid page number in admin_tasks_page_cb: {callback_query.data}")
-        await callback_query.answer("Error: Invalid page reference.", show_alert=True)
+        await callback_query.answer("error: invalid page reference.", show_alert=True)
         return
 
     await callback_query.answer()
@@ -182,7 +182,7 @@ async def admin_tasks_back_panel_cb(callback_query: CallbackQuery, bot: Bot):
 async def admin_task_moderate_trigger_cb(callback_query: CallbackQuery, bot: Bot):
     action_parts = callback_query.data.split(":")
     if len(action_parts) < 2:
-        logger.error(f"Invalid callback data format: {callback_query.data}")
+        logger.error(f"invalid callback data format: {callback_query.data}")
         await callback_query.answer(MSG_ADMIN_TASK_IDENTIFY_ERROR, show_alert=True)
         return
 

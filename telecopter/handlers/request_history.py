@@ -91,11 +91,11 @@ async def _send_my_requests_page_logic(
 ):
     await state.clear()
 
-    logger.debug(f"Fetching requests for user_id: {user_id}, page: {page}")
+    logger.debug(f"fetching requests for user_id: {user_id}, page: {page}")
     requests_rows = await db.get_user_requests(user_id, page, DEFAULT_PAGE_SIZE)
     total_requests = await db.get_user_requests_count(user_id)
     logger.debug(
-        f"Found {len(requests_rows)} rows for this page, total_requests: {total_requests} for user_id: {user_id}"
+        f"found {len(requests_rows)} rows for this page, total_requests: {total_requests} for user_id: {user_id}"
     )
 
     total_pages = (total_requests + DEFAULT_PAGE_SIZE - 1) // DEFAULT_PAGE_SIZE

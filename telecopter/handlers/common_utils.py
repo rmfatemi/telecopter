@@ -56,9 +56,9 @@ async def is_admin(user_id: int) -> bool:
 
     is_user_admin = user_id in ADMIN_CHAT_IDS
     if is_user_admin:
-        logger.debug("User %s is in ADMIN_CHAT_IDS and considered admin.", user_id)
+        logger.debug("user %s is in ADMIN_CHAT_IDS and considered admin.", user_id)
     else:
-        logger.debug("User %s is NOT in ADMIN_CHAT_IDS and considered not admin.", user_id)
+        logger.debug("user %s is NOT in ADMIN_CHAT_IDS and considered not admin.", user_id)
     return is_user_admin
 
 
@@ -79,19 +79,19 @@ async def notify_admin_formatted(
                 parse_mode="MarkdownV2",
                 reply_markup=keyboard,
             )
-            logger.info("Sent notification to admin_id %s.", admin_id)
+            logger.info("sent notification to admin_id %s.", admin_id)
             success_count += 1
         except TelegramAPIError as e:
-            logger.error("Failed to send notification to admin_id %s: %s", admin_id, e)
+            logger.error("failed to send notification to admin_id %s: %s", admin_id, e)
             failure_count += 1
         except Exception as e:
-            logger.error("Unexpected error sending notification to admin_id %s: %s", admin_id, e)
+            logger.error("unexpected error sending notification to admin_id %s: %s", admin_id, e)
             failure_count += 1
         if len(ADMIN_CHAT_IDS) > 1:
             await asyncio.sleep(0.1)
 
     if failure_count > 0:
-        logger.warning(f"Admin notifications: {success_count} sent, {failure_count} failed.")
+        logger.warning(f"admin notifications: {success_count} sent, {failure_count} failed.")
 
 
 async def ensure_user_approved(event: Union[Message, CallbackQuery], bot: Bot, state: FSMContext) -> bool:
