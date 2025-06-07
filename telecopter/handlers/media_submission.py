@@ -4,6 +4,7 @@ from aiogram.utils.formatting import Text
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup
+from aiogram.exceptions import TelegramBadRequest # Import TelegramBadRequest for specific error handling
 
 import telecopter.database as db
 from telecopter.logger import setup_logger
@@ -27,6 +28,9 @@ from telecopter.constants import (
     MSG_REQUEST_SUBMITTED,
     MSG_REQUEST_WITH_NOTE_SUBMITTED,
     MSG_REQUEST_SUCCESS,
+    GenericCallbackAction,
+    RequestConfirmAction,
+    MediaType,
 )
 
 
@@ -37,9 +41,9 @@ media_submission_router = Router(name="media_submission_router")
 
 def get_request_confirm_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text=BTN_CONFIRM_REQUEST, callback_data="req_conf:yes")
-    builder.button(text=BTN_CONFIRM_WITH_NOTE, callback_data="req_conf:yes_note")
-    builder.button(text=BTN_CANCEL_ACTION, callback_data="action_cancel")
+    builder.button(text=BTN_CONFIRM_REQUEST, callback_data=f"req_conf:{RequestConfirmAction.YES.value}")
+    builder.button(text=BTN_CONFIRM_WITH_NOTE, callback_data=f"req_conf:{RequestConfirmAction.YES_WITH_NOTE.value}")
+    builder.button(text=BTN_CANCEL_ACTION, callback_data=GenericCallbackAction.CANCEL.value)
     builder.adjust(1)
     return builder.as_markup()
 
@@ -66,7 +70,7 @@ async def manual_request_description_handler(message: Message, state: FSMContext
         title=description,
         year=None,
         imdb_id=None,
-        request_type="manual_media",
+        request_type=MediaType.MANUAL.value,
         user_query=original_query,
         user_note=None,
     )
@@ -96,9 +100,16 @@ async def confirm_media_request_cb(callback_query: CallbackQuery, state: FSMCont
     chat_id_to_reply = callback_query.from_user.id
 
     try:
-        await callback_query.message.delete()
+        await callback_query.message.edit_reply_markup(reply_markup=None)
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e).lower():
+            logger.debug("Confirmation message not modified (buttons already removed or never existed).")
+        elif "message can't be edited" in str(e).lower():
+            logger.warning(f"Failed to edit reply markup for message {callback_query.message.message_id}: {e}. Message might be too old or not editable.")
+        else:
+            logger.error(f"TelegramBadRequest when editing confirmation message markup: {e}")
     except Exception as e:
-        logger.debug(f"failed to delete confirmation message: {e}")
+        logger.error(f"Unexpected error when editing confirmation message markup: {e}")
 
     if not selected_media:
         error_text_obj = Text(ERR_REQUEST_EXPIRED)
@@ -107,7 +118,7 @@ async def confirm_media_request_cb(callback_query: CallbackQuery, state: FSMCont
         await show_main_menu_for_user(callback_query, bot, custom_text_str=MSG_SELECTION_EXPIRED)
         return
 
-    if action == "yes_note":
+    if action == RequestConfirmAction.YES_WITH_NOTE.value:
         prompt_text_obj = Text(PROMPT_REQUEST_NOTE)
         await bot.send_message(chat_id_to_reply, prompt_text_obj.as_markdown(), parse_mode="MarkdownV2")
         await state.set_state(RequestMediaStates.typing_user_note)

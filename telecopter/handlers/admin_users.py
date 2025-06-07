@@ -11,15 +11,9 @@ from telecopter.config import DEFAULT_PAGE_SIZE
 from telecopter.handlers.common_utils import IsAdminFilter
 from telecopter.handlers.menu_utils import show_admin_panel
 from telecopter.constants import (
-    USER_STATUS_APPROVED,
-    USER_STATUS_REJECTED,
-    USER_STATUS_PENDING_APPROVAL,
-    CALLBACK_MANAGE_USERS_PREFIX,
-    CALLBACK_MANAGE_USERS_APPROVE,
-    CALLBACK_MANAGE_USERS_REJECT,
-    CALLBACK_MANAGE_USERS_PAGE_PREFIX,
-    CALLBACK_ADMIN_TASKS_BACK_PANEL,
-    MSG_ACCESS_DENIED,
+    UserStatus,
+    UserManageCallback,
+    AdminTasksCallback,
     MSG_ERROR_PROCESSING_ACTION_ALERT,
     MSG_ADMIN_TARGET_USER_NOT_FOUND_ALERT,
     MSG_ADMIN_UNKNOWN_ACTION_ALERT,
@@ -38,7 +32,7 @@ from telecopter.constants import (
     BTN_BACK_TO_ADMIN_PANEL,
     BTN_APPROVE_USER,
     BTN_REJECT_USER,
-    ICON_USER_APPROVAL,
+    Icon,
     MSG_ITEM_MESSAGE_DIVIDER,
 )
 
@@ -52,12 +46,14 @@ def get_user_management_pagination_keyboard(page: int, total_pages: int) -> Inli
     builder = InlineKeyboardBuilder()
 
     if page > 1:
-        builder.button(text=BTN_PREVIOUS_PAGE, callback_data=f"{CALLBACK_MANAGE_USERS_PAGE_PREFIX}:{page - 1}")
+        builder.button(text=BTN_PREVIOUS_PAGE, callback_data=f"{UserManageCallback.PAGE_PREFIX.value}:{page - 1}")
     if page < total_pages:
-        builder.button(text=BTN_NEXT_PAGE, callback_data=f"{CALLBACK_MANAGE_USERS_PAGE_PREFIX}:{page + 1}")
+        builder.button(text=BTN_NEXT_PAGE, callback_data=f"{UserManageCallback.PAGE_PREFIX.value}:{page + 1}")
 
     builder.adjust(2)
-    builder.row(InlineKeyboardButton(text=BTN_BACK_TO_ADMIN_PANEL, callback_data=CALLBACK_ADMIN_TASKS_BACK_PANEL))
+    builder.row(
+        InlineKeyboardButton(text=BTN_BACK_TO_ADMIN_PANEL, callback_data=AdminTasksCallback.BACK_TO_PANEL.value)
+    )
     return builder.as_markup()
 
 
@@ -88,7 +84,7 @@ async def list_pending_users(message_to_edit: Message, bot: Bot, page: int = 1):
             display_name = f"@{username}" if username else first_name
 
             user_text = as_list(
-                Text(ICON_USER_APPROVAL, " ", Bold(TextLink(display_name, url=f"tg://user?id={user_id}"))),
+                Text(Icon.USER_APPROVAL.value, " ", Bold(TextLink(display_name, url=f"tg://user?id={user_id}"))),
                 Text("   Requested on: ", Italic(created_date)),
                 sep="\n",
             )
@@ -97,16 +93,20 @@ async def list_pending_users(message_to_edit: Message, bot: Bot, page: int = 1):
             keyboard_builder.row(
                 InlineKeyboardButton(
                     text=BTN_APPROVE_USER,
-                    callback_data=f"{CALLBACK_MANAGE_USERS_PREFIX}:{CALLBACK_MANAGE_USERS_APPROVE}:{user_id}",
+                    callback_data=f"{UserManageCallback.PREFIX.value}:{UserManageCallback.APPROVE.value}:{user_id}",
                 ),
                 InlineKeyboardButton(
                     text=BTN_REJECT_USER,
-                    callback_data=f"{CALLBACK_MANAGE_USERS_PREFIX}:{CALLBACK_MANAGE_USERS_REJECT}:{user_id}",
+                    callback_data=f"{UserManageCallback.PREFIX.value}:{UserManageCallback.REJECT.value}:{user_id}",
                 ),
             )
             content_elements.append(Text(MSG_ITEM_MESSAGE_DIVIDER))
 
-    if content_elements and isinstance(content_elements[-1], Text) and content_elements[-1].render()[0] == MSG_ITEM_MESSAGE_DIVIDER:
+    if (
+        content_elements
+        and isinstance(content_elements[-1], Text)
+        and content_elements[-1].render()[0] == MSG_ITEM_MESSAGE_DIVIDER
+    ):
         content_elements.pop()
 
     pagination_markup = get_user_management_pagination_keyboard(page, total_pages)
@@ -121,7 +121,7 @@ async def list_pending_users(message_to_edit: Message, bot: Bot, page: int = 1):
     )
 
 
-@admin_users_router.callback_query(F.data.startswith(f"{CALLBACK_MANAGE_USERS_PAGE_PREFIX}:"), IsAdminFilter())
+@admin_users_router.callback_query(F.data.startswith(f"{UserManageCallback.PAGE_PREFIX.value}:"), IsAdminFilter())
 async def pending_users_page_cb(callback_query: CallbackQuery, bot: Bot):
     try:
         page = int(callback_query.data.split(":")[1])
@@ -133,7 +133,7 @@ async def pending_users_page_cb(callback_query: CallbackQuery, bot: Bot):
     await list_pending_users(message_to_edit=callback_query.message, bot=bot, page=page)
 
 
-@admin_users_router.callback_query(F.data.startswith(f"{CALLBACK_MANAGE_USERS_PREFIX}:"), IsAdminFilter())
+@admin_users_router.callback_query(F.data.startswith(f"{UserManageCallback.PREFIX.value}:"), IsAdminFilter())
 async def handle_user_approval_action(callback_query: CallbackQuery, bot: Bot):
     try:
         _, action, target_user_id_str = callback_query.data.split(":")
@@ -150,10 +150,10 @@ async def handle_user_approval_action(callback_query: CallbackQuery, bot: Bot):
 
     target_user = dict(target_user_row)
 
-    if target_user["approval_status"] != USER_STATUS_PENDING_APPROVAL:
+    if target_user["approval_status"] != UserStatus.PENDING_APPROVAL.value:
         alert_text = (
             MSG_USER_ALREADY_APPROVED_ALERT
-            if target_user["approval_status"] == USER_STATUS_APPROVED
+            if target_user["approval_status"] == UserStatus.APPROVED.value
             else MSG_USER_ALREADY_REJECTED_ALERT
         )
         await callback_query.answer(alert_text, show_alert=True)
@@ -163,13 +163,13 @@ async def handle_user_approval_action(callback_query: CallbackQuery, bot: Bot):
     new_status, log_action, user_notification, admin_confirm_msg = "", "", "", ""
     user_name = target_user.get("first_name") or str(target_user_id)
 
-    if action == CALLBACK_MANAGE_USERS_APPROVE:
-        new_status = USER_STATUS_APPROVED
+    if action == UserManageCallback.APPROVE.value:
+        new_status = UserStatus.APPROVED.value
         log_action = "user_approved"
         user_notification = MSG_USER_APPROVED_NOTIFICATION
         admin_confirm_msg = MSG_ADMIN_USER_APPROVED_CONFIRM.format(user_name=user_name, user_id=target_user_id)
-    elif action == CALLBACK_MANAGE_USERS_REJECT:
-        new_status = USER_STATUS_REJECTED
+    elif action == UserManageCallback.REJECT.value:
+        new_status = UserStatus.REJECTED.value
         log_action = "user_rejected"
         user_notification = MSG_USER_REJECTED_NOTIFICATION
         admin_confirm_msg = MSG_ADMIN_USER_REJECTED_CONFIRM.format(user_name=user_name, user_id=target_user_id)
@@ -186,11 +186,7 @@ async def handle_user_approval_action(callback_query: CallbackQuery, bot: Bot):
 
     try:
         notification_text_obj = Text(user_notification)
-        await bot.send_message(
-            target_user["chat_id"],
-            notification_text_obj.as_markdown(),
-            parse_mode="MarkdownV2"
-        )
+        await bot.send_message(target_user["chat_id"], notification_text_obj.as_markdown(), parse_mode="MarkdownV2")
     except Exception as e:
         logger.error(f"failed to notify user {target_user_id} about approval status change: {e}")
         admin_confirm_msg += MSG_ADMIN_USER_NOTIFY_FAIL_SUFFIX
@@ -199,7 +195,7 @@ async def handle_user_approval_action(callback_query: CallbackQuery, bot: Bot):
     await list_pending_users(message_to_edit=callback_query.message, bot=bot, page=1)
 
 
-@admin_users_router.callback_query(F.data == CALLBACK_ADMIN_TASKS_BACK_PANEL, IsAdminFilter())
+@admin_users_router.callback_query(F.data == AdminTasksCallback.BACK_TO_PANEL.value, IsAdminFilter())
 async def admin_users_back_panel_cb(callback_query: CallbackQuery, bot: Bot):
     await callback_query.answer()
     await show_admin_panel(callback_query, bot)

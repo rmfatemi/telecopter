@@ -25,11 +25,9 @@ from telecopter.constants import (
     BTN_MOD_DENY,
     BTN_MOD_DENY_W_NOTE,
     BTN_MOD_MARK_COMPLETED,
-    BTN_MOD_COMPLETE_W_NOTE,
+    BTN_MOD_MARK_RESOLVED,
     BTN_MOD_SHELVING_DECISION,
     BTN_MOD_ACKNOWLEDGE,
-    BTN_MOD_MARK_RESOLVED,
-    BTN_MOD_RESOLVE_W_NOTE,
     PROMPT_ADMIN_NOTE_FOR_REQUEST,
     MSG_USER_REQUEST_APPROVED,
     MSG_USER_REQUEST_APPROVED_WITH_NOTE,
@@ -52,6 +50,9 @@ from telecopter.constants import (
     MSG_ADMIN_ACTION_TAKEN_SUFFIX,
     MSG_ADMIN_NOTE_LABEL,
     MSG_ITEM_MESSAGE_DIVIDER,
+    AdminModerateAction,
+    RequestStatus,
+    RequestType,
 )
 
 
@@ -62,24 +63,40 @@ admin_moderate_router = Router(name="admin_moderate_router")
 
 def get_admin_request_action_keyboard(request_id: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text=BTN_MOD_APPROVE, callback_data=f"admin_act:approve:{request_id}")
-    builder.button(text=BTN_MOD_APPROVE_W_NOTE, callback_data=f"admin_act:approve_with_note:{request_id}")
-    builder.button(text=BTN_MOD_DENY, callback_data=f"admin_act:deny:{request_id}")
-    builder.button(text=BTN_MOD_DENY_W_NOTE, callback_data=f"admin_act:deny_with_note:{request_id}")
-    builder.button(text=BTN_MOD_MARK_COMPLETED, callback_data=f"admin_act:complete:{request_id}")
-    builder.button(text=BTN_MOD_COMPLETE_W_NOTE, callback_data=f"admin_act:complete_with_note:{request_id}")
-    builder.button(text=BTN_MOD_SHELVING_DECISION, callback_data=f"admin_act:close_task:{request_id}")
-    builder.adjust(2, 2, 2, 1)
+    builder.button(text=BTN_MOD_APPROVE, callback_data=f"admin_act:{AdminModerateAction.APPROVE.value}:{request_id}")
+    builder.button(
+        text=BTN_MOD_APPROVE_W_NOTE,
+        callback_data=f"admin_act:{AdminModerateAction.APPROVE_WITH_NOTE.value}:{request_id}",
+    )
+    builder.button(text=BTN_MOD_DENY, callback_data=f"admin_act:{AdminModerateAction.DENY.value}:{request_id}")
+    builder.button(
+        text=BTN_MOD_DENY_W_NOTE, callback_data=f"admin_act:{AdminModerateAction.DENY_WITH_NOTE.value}:{request_id}"
+    )
+    builder.button(
+        text=BTN_MOD_MARK_COMPLETED,
+        callback_data=f"admin_act:{AdminModerateAction.MARK_COMPLETED.value}_with_note:{request_id}",
+    )
+    builder.button(
+        text=BTN_MOD_SHELVING_DECISION, callback_data=f"admin_act:{AdminModerateAction.CLOSE_TASK.value}:{request_id}"
+    )
+    builder.adjust(2, 2, 2)
     return builder.as_markup()
 
 
 def get_admin_report_action_keyboard(request_id: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text=BTN_MOD_ACKNOWLEDGE, callback_data=f"admin_act:acknowledge:{request_id}")
-    builder.button(text=BTN_MOD_MARK_RESOLVED, callback_data=f"admin_act:complete:{request_id}")
-    builder.button(text=BTN_MOD_RESOLVE_W_NOTE, callback_data=f"admin_act:complete_with_note:{request_id}")
-    builder.button(text=BTN_MOD_SHELVING_DECISION, callback_data=f"admin_act:close_task:{request_id}")
-    builder.adjust(1, 1, 1, 1)
+    builder.button(
+        text=BTN_MOD_ACKNOWLEDGE, callback_data=f"admin_act:{AdminModerateAction.ACKNOWLEDGE.value}:{request_id}"
+    )
+    # Changed callback data to trigger note-taking flow directly for 'resolve'
+    builder.button(
+        text=BTN_MOD_MARK_RESOLVED,
+        callback_data=f"admin_act:{AdminModerateAction.MARK_RESOLVED.value}_with_note:{request_id}",
+    )
+    builder.button(
+        text=BTN_MOD_SHELVING_DECISION, callback_data=f"admin_act:{AdminModerateAction.CLOSE_TASK.value}:{request_id}"
+    )
+    builder.adjust(1, 1, 1)  # Adjusted layout
     return builder.as_markup()
 
 
@@ -95,15 +112,15 @@ async def _perform_moderation_action_and_notify(
 ) -> str:
     user_notification_text_template: Optional[str] = None
 
-    if new_status == "approved":
+    if new_status == RequestStatus.APPROVED.value:
         if admin_note:
             user_notification_text_template = MSG_USER_REQUEST_APPROVED_WITH_NOTE
         else:
             user_notification_text_template = MSG_USER_REQUEST_APPROVED
-    elif new_status == "denied":
+    elif new_status == RequestStatus.DENIED.value:
         user_notification_text_template = MSG_USER_REQUEST_DENIED
-    elif new_status == "completed":
-        if original_request_type == "problem":
+    elif new_status == RequestStatus.COMPLETED.value:
+        if original_request_type == RequestType.PROBLEM.value:
             if admin_note:
                 user_notification_text_template = MSG_USER_PROBLEM_RESOLVED_WITH_NOTE
             else:
@@ -113,7 +130,7 @@ async def _perform_moderation_action_and_notify(
                 user_notification_text_template = MSG_USER_REQUEST_COMPLETED_WITH_NOTE
             else:
                 user_notification_text_template = MSG_USER_REQUEST_COMPLETED
-    elif new_status == "acknowledged":
+    elif new_status == RequestStatus.ACKNOWLEDGED.value:
         user_notification_text_template = MSG_USER_PROBLEM_ACKNOWLEDGED
 
     admin_confirm_message_core = MSG_ADMIN_ACTION_ERROR.format(request_id=request_id)
@@ -186,7 +203,7 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
         await callback_query.message.edit_text(error_text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None)
         return
 
-    if action_full_key == "close_task":
+    if action_full_key == AdminModerateAction.CLOSE_TASK.value:
         try:
             text_obj = Text(MSG_ADMIN_TASK_CLOSED_IN_VIEW.format(request_id=request_id))
             await callback_query.message.edit_text(text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None)
@@ -204,7 +221,10 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
 
     base_action_key = action_full_key.replace("_with_note", "")
 
-    if "_with_note" in action_full_key:
+    if "_with_note" in action_full_key or base_action_key in [
+        AdminModerateAction.MARK_COMPLETED.value,
+        AdminModerateAction.MARK_RESOLVED.value,
+    ]:
         await state.set_state(AdminInteractionStates.typing_admin_note)
         await state.update_data(
             admin_request_id=request_id,
@@ -221,14 +241,16 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
         return
 
     new_status: Optional[str] = None
-    if base_action_key == "approve":
-        new_status = "approved"
-    elif base_action_key == "deny":
-        new_status = "denied"
-    elif base_action_key == "complete":
-        new_status = "completed"
-    elif base_action_key == "acknowledge":
-        new_status = "acknowledged"
+    if base_action_key == AdminModerateAction.APPROVE.value:
+        new_status = RequestStatus.APPROVED.value
+    elif base_action_key == AdminModerateAction.DENY.value:
+        new_status = RequestStatus.DENIED.value
+    elif base_action_key == AdminModerateAction.MARK_COMPLETED.value:
+        new_status = RequestStatus.COMPLETED.value
+    elif base_action_key == AdminModerateAction.ACKNOWLEDGE.value:
+        new_status = RequestStatus.ACKNOWLEDGED.value
+    elif base_action_key == AdminModerateAction.MARK_RESOLVED.value:  # Added this case
+        new_status = RequestStatus.COMPLETED.value  # Assuming 'resolved' means 'completed' in terms of status
 
     admin_confirm_log_msg_raw: str
     if new_status:
@@ -294,12 +316,14 @@ async def admin_note_handler(message: Message, state: FSMContext, bot: Bot):
     original_request = dict(original_request_row)
 
     new_status: Optional[str] = None
-    if base_action == "approve":
-        new_status = "approved"
-    elif base_action == "deny":
-        new_status = "denied"
-    elif base_action == "complete":
-        new_status = "completed"
+    if base_action == AdminModerateAction.APPROVE.value:
+        new_status = RequestStatus.APPROVED.value
+    elif base_action == AdminModerateAction.DENY.value:
+        new_status = RequestStatus.DENIED.value
+    elif base_action == AdminModerateAction.MARK_COMPLETED.value:
+        new_status = RequestStatus.COMPLETED.value
+    elif base_action == AdminModerateAction.MARK_RESOLVED.value:  # Added this case
+        new_status = RequestStatus.COMPLETED.value  # Assuming 'resolved' means 'completed'
 
     admin_confirm_log_msg_raw: str
     full_action_key = f"{base_action}_with_note"

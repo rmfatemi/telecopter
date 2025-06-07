@@ -21,6 +21,7 @@ from telecopter.constants import (
     MSG_MEDIA_CONFIRM_REQUEST,
     BTN_MEDIA_MANUAL_REQUEST,
     BTN_CANCEL_ACTION,
+    GenericCallbackAction,
 )
 
 
@@ -38,7 +39,7 @@ def get_tmdb_select_keyboard(search_results: list) -> InlineKeyboardMarkup:
         callback_data = f"tmdb_sel:{item['tmdb_id']}:{item['media_type']}"
         builder.button(text=truncate_text(button_text, 60), callback_data=callback_data)
     builder.button(text=BTN_MEDIA_MANUAL_REQUEST, callback_data="tmdb_sel:manual_request")
-    builder.button(text=BTN_CANCEL_ACTION, callback_data="action_cancel")
+    builder.button(text=BTN_CANCEL_ACTION, callback_data=GenericCallbackAction.CANCEL.value)
     builder.adjust(1)
     return builder.as_markup()
 

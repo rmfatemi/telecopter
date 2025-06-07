@@ -1,36 +1,105 @@
-MEDIA_TYPE_TV = "tv"
-MEDIA_TYPE_MOVIE = "movie"
-MEDIA_TYPE_MANUAL = "manual_media"
+from enum import Enum
 
-USER_STATUS_NEW = "new"
-USER_STATUS_APPROVED = "approved"
-USER_STATUS_REJECTED = "rejected"
-USER_STATUS_PENDING_APPROVAL = "pending_approval"
 
-REQUEST_STATUS_COMPLETED = "completed"
-REQUEST_STATUS_PENDING_ADMIN = "pending_admin"
+class MediaType(Enum):
+    TV = "tv"
+    MOVIE = "movie"
+    MANUAL = "manual_media"
 
-CALLBACK_ACTION_CANCEL = "action_cancel"
 
-CALLBACK_ADMIN_PANEL_PREFIX = "admin_panel"
-CALLBACK_ADMIN_PANEL_VIEW_TASKS = "view_tasks"
-CALLBACK_ADMIN_PANEL_MANAGE_USERS = "manage_users"
-CALLBACK_ADMIN_PANEL_SEND_ANNOUNCEMENT = "send_announcement"
+class UserStatus(Enum):
+    NEW = "new"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    PENDING_APPROVAL = "pending_approval"
 
-CALLBACK_ADMIN_TASKS_PAGE_PREFIX = "admin_tasks_page"
-CALLBACK_ADMIN_TASKS_BACK_PANEL = "admin_tasks_back_panel"
-CALLBACK_ADMIN_TASK_MODERATE_PREFIX = "admin_task_moderate"
 
-CALLBACK_MANAGE_USERS_REJECT = "reject"
-CALLBACK_MANAGE_USERS_APPROVE = "approve"
-CALLBACK_MANAGE_USERS_PREFIX = "user_manage"
-CALLBACK_MANAGE_USERS_PAGE_PREFIX = "user_manage_page"
+class RequestStatus(Enum):
+    COMPLETED = "completed"
+    PENDING_ADMIN = "pending_admin"
+    APPROVED = "approved"
+    DENIED = "denied"
+    ACKNOWLEDGED = "acknowledged"
 
-CALLBACK_MAIN_MENU_CANCEL_ACTION = "main_menu:cancel_current_action"
 
-CALLBACK_USER_ACCESS_LATER_ACTION = "later"
-CALLBACK_USER_ACCESS_REQUEST_ACTION = "request"
-CALLBACK_USER_ACCESS_REQUEST_PREFIX = "user_access"
+class RequestType(Enum):
+    PROBLEM = "problem"
+
+
+class GenericCallbackAction(Enum):
+    CANCEL = "action_cancel"
+
+
+class AdminPanelCallback(Enum):
+    PREFIX = "admin_panel"
+    VIEW_TASKS = "view_tasks"
+    MANAGE_USERS = "manage_users"
+    SEND_ANNOUNCEMENT = "send_announcement"
+
+
+class AdminTasksCallback(Enum):
+    PAGE_PREFIX = "admin_tasks_page"
+    BACK_TO_PANEL = "admin_tasks_back_panel"
+    MODERATE_PREFIX = "admin_task_moderate"
+
+
+class AdminModerateAction(Enum):
+    APPROVE = "approve"
+    APPROVE_WITH_NOTE = "approve_with_note"
+    DENY = "deny"
+    DENY_WITH_NOTE = "deny_with_note"
+    MARK_COMPLETED = "complete"
+    ACKNOWLEDGE = "acknowledge"
+    MARK_RESOLVED = "resolve"
+    CLOSE_TASK = "close_task"
+
+
+class AdminAnnounceAction(Enum):
+    UNMUTED = "unmuted"
+    MUTED = "muted"
+    CANCEL = "cancel_to_panel"
+
+
+class UserManageCallback(Enum):
+    PREFIX = "user_manage"
+    APPROVE = "approve"
+    REJECT = "reject"
+    PAGE_PREFIX = "user_manage_page"
+
+
+class UserAccessCallback(Enum):
+    PREFIX = "user_access"
+    REQUEST = "request"
+    LATER = "later"
+
+
+class MainMenuCallback(Enum):
+    PREFIX = "main_menu"
+    REQUEST_MEDIA = "request_media"
+    MY_REQUESTS = "my_requests"
+    REPORT_PROBLEM = "report_problem"
+    CANCEL_ACTION = "cancel_current_action"
+    SHOW_START_MENU_FROM_MY_REQUESTS = "show_start_menu_from_my_requests"
+
+
+class RequestConfirmAction(Enum):
+    YES = "yes"
+    YES_WITH_NOTE = "yes_note"
+
+
+class Icon(Enum):
+    MOVIE = "🎬"
+    TV_SHOW = "📺"
+    ANNOUNCEMENT = "📢"
+    MANUAL_REQUEST = "✍️"
+    USER_APPROVAL = "👤"
+    PROBLEM_REPORT = "⚠️"
+    GENERIC_REQUEST = "📑"
+
+
+TMDB_TV_URL_BASE = "https://www.themoviedb.org/tv/"
+IMDB_TITLE_URL_BASE = "https://www.imdb.com/title/"
+TMDB_MOVIE_URL_BASE = "https://www.themoviedb.org/movie/"
 
 BTN_ANNOUNCE_CANCEL = "❌ Cancel"
 BTN_ANNOUNCE_MUTED = "🤫 Muted"
@@ -47,12 +116,10 @@ BTN_MEDIA_MANUAL_REQUEST = "📝 Other"
 BTN_MOD_ACKNOWLEDGE = "👀 Acknowledge"
 BTN_MOD_APPROVE = "✅ Approve"
 BTN_MOD_APPROVE_W_NOTE = "📝 Approve w/ Note"
-BTN_MOD_COMPLETE_W_NOTE = "📝 Complete w/ Note"
 BTN_MOD_DENY = "❌ Deny"
 BTN_MOD_DENY_W_NOTE = "📝 Deny w/ Note"
 BTN_MOD_MARK_COMPLETED = "🏁 Mark Completed"
 BTN_MOD_MARK_RESOLVED = "🛠️ Mark Resolved"
-BTN_MOD_RESOLVE_W_NOTE = "📝 Resolve w/ Note"
 BTN_MOD_SHELVING_DECISION = "Decide Later"
 BTN_MY_REQUESTS = "📊 My Requests"
 BTN_NEXT_PAGE = "Next ➡️"
@@ -86,6 +153,9 @@ MSG_ACTION_CANCELLED_MENU = "✅ Action cancelled. What can I help you with next
 MSG_ADMIN_ACTION_DB_UPDATE_FAILED = "❗ Failed to update DB status for request ID {request_id} to {new_status}"
 MSG_ADMIN_ACTION_DB_UPDATE_FAILED_WITH_NOTE = (
     "❗ Failed to update DB status for request ID {request_id} to {new_status} with note"
+)
+MSG_ADMIN_NEW_MEDIA_REQUEST_NOTIFICATION = (
+    "🔔 New media request (ID: {request_id}) submitted for '{title}'. Please review in the admin panel."
 )
 MSG_ADMIN_ACTION_ERROR = "❗ Unexpected error processing request {request_id}"
 MSG_ADMIN_ACTION_NOTIFICATION_FAILED = " (User notification failed)"
@@ -139,6 +209,7 @@ MSG_MAIN_MENU_MEDIA_SEARCH_UNAVAILABLE = "⚠️ Media search is currently unava
 MSG_MANUAL_REQUEST_SUBMITTED = '✅ Your manual request for "{description}" has been submitted. Admins will review it.'
 MSG_MANUAL_REQUEST_SUCCESS = "✅ Manual request submitted! What can I help you with next?"
 
+MSG_MEDIA_REQUEST_CONFIRMED_CAPTION = "✅ Your request for this item has been submitted."
 MSG_MEDIA_CONFIRM_REQUEST = "🎯 Confirm: Do you want to request this?"
 MSG_MEDIA_NO_RESULTS = (
     "😕 Sorry, I couldn't find any results for \"{query_text}\". You can try a different name, or choose 'Other / Not"
@@ -162,7 +233,7 @@ MSG_REPORT_SUCCESS = "✅ Report submitted! What can I help you with next?"
 MSG_REQUESTS_PAGE_HEADER = "📖 Your requests & reports (page {page} of {total_pages})"
 
 MSG_REQUEST_SUBMITTED = "✅ Your request has been submitted for review. You'll be notified!"
-MSG_REQUEST_SUCCESS = "✅ Request submitted! What can I help you with next?"
+MSG_REQUEST_SUCCESS = "✅ Request submitted! What can I help you with next!"
 MSG_REQUEST_WITH_NOTE_SUBMITTED = "✅ Your request with the note has been submitted. You'll be notified!"
 
 MSG_SELECTION_EXPIRED = "⏳ Selection expired. What can I help you with next?"
@@ -232,9 +303,7 @@ PROMPT_MANUAL_REQUEST_DESCRIPTION = (
 
 PROMPT_MEDIA_NAME_TYPING = "✍️ Please type the name of the media you're looking for. You can cancel using the main menu."
 
-PROMPT_PROBLEM_DESCRIPTION = (
-    "📝 Please describe the problem you are experiencing below, or use the cancel button."
-)
+PROMPT_PROBLEM_DESCRIPTION = "📝 Please describe the problem you are experiencing below, or use the cancel button."
 PROMPT_PROBLEM_DESCRIPTION_RETRY = "✍️ Please type your problem description, or use the cancel button in the menu."
 
 PROMPT_REQUEST_NOTE = "📝 Please send a short note for your request."
@@ -242,11 +311,3 @@ PROMPT_REQUEST_NOTE = "📝 Please send a short note for your request."
 TITLE_ADMIN_PANEL = "🧑‍💼 Admin Panel"
 TITLE_ADMIN_TASKS_LIST = "📋 Admin Tasks (Page {page} of {total_pages})"
 TITLE_MANAGE_USERS_LIST = "👤 Pending Users (Page {page} of {total_pages})"
-
-ICON_MOVIE = "🎬"
-ICON_TV_SHOW = "📺"
-ICON_ANNOUNCEMENT = "📢"
-ICON_MANUAL_REQUEST = "✍️"
-ICON_USER_APPROVAL = "👤"
-ICON_PROBLEM_REPORT = "⚠️"
-ICON_GENERIC_REQUEST = "📑"

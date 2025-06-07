@@ -18,13 +18,9 @@ from telecopter.handlers.common_utils import (
 )
 from telecopter.handlers.menu_utils import show_admin_panel, show_main_menu_for_user
 from telecopter.constants import (
-    USER_STATUS_NEW,
-    USER_STATUS_PENDING_APPROVAL,
-    USER_STATUS_APPROVED,
-    USER_STATUS_REJECTED,
-    CALLBACK_USER_ACCESS_REQUEST_PREFIX,
-    CALLBACK_USER_ACCESS_REQUEST_ACTION,
-    CALLBACK_USER_ACCESS_LATER_ACTION,
+    UserStatus,
+    UserAccessCallback,
+    UserManageCallback,
     MSG_START_WELCOME_NEW_PROMPT,
     MSG_START_PENDING_APPROVAL,
     MSG_START_REJECTED,
@@ -46,11 +42,8 @@ from telecopter.constants import (
     MSG_ACTION_CANCELLED_ALERT,
     MSG_ERROR_PROCESSING_ACTION_ALERT,
     MSG_ADMIN_UNKNOWN_ACTION_ALERT,
-    CALLBACK_ACTION_CANCEL,
-    CALLBACK_MAIN_MENU_CANCEL_ACTION,
-    CALLBACK_MANAGE_USERS_PREFIX,
-    CALLBACK_MANAGE_USERS_APPROVE,
-    CALLBACK_MANAGE_USERS_REJECT,
+    GenericCallbackAction,
+    MainMenuCallback,
 )
 
 
@@ -63,10 +56,10 @@ def get_request_access_keyboard() -> InlineKeyboardBuilder:
     builder = InlineKeyboardBuilder()
     builder.button(
         text=BTN_REQUEST_ACCESS,
-        callback_data=f"{CALLBACK_USER_ACCESS_REQUEST_PREFIX}:{CALLBACK_USER_ACCESS_REQUEST_ACTION}",
+        callback_data=f"{UserAccessCallback.PREFIX.value}:{UserAccessCallback.REQUEST.value}",
     )
     builder.button(
-        text=BTN_MAYBE_LATER, callback_data=f"{CALLBACK_USER_ACCESS_REQUEST_PREFIX}:{CALLBACK_USER_ACCESS_LATER_ACTION}"
+        text=BTN_MAYBE_LATER, callback_data=f"{UserAccessCallback.PREFIX.value}:{UserAccessCallback.LATER.value}"
     )
     builder.adjust(1)
     return builder
@@ -89,15 +82,15 @@ async def start_user(message: Message, state: FSMContext, bot: Bot):
     user_name = message.from_user.first_name
     approval_status = await db.get_user_approval_status(user_id)
 
-    if approval_status == USER_STATUS_APPROVED:
+    if approval_status == UserStatus.APPROVED.value:
         await show_main_menu_for_user(message, bot)
-    elif approval_status == USER_STATUS_PENDING_APPROVAL:
+    elif approval_status == UserStatus.PENDING_APPROVAL.value:
         text_obj = Text(MSG_START_PENDING_APPROVAL.format(user_name=user_name))
         await message.answer(text_obj.as_markdown(), parse_mode="MarkdownV2")
-    elif approval_status == USER_STATUS_REJECTED:
+    elif approval_status == UserStatus.REJECTED.value:
         text_obj = Text(MSG_START_REJECTED.format(user_name=user_name))
         await message.answer(text_obj.as_markdown(), parse_mode="MarkdownV2")
-    elif approval_status == USER_STATUS_NEW:
+    elif approval_status == UserStatus.NEW.value:
         keyboard = get_request_access_keyboard()
         text_obj = Text(MSG_START_WELCOME_NEW_PROMPT.format(user_name=user_name))
         await message.answer(text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=keyboard.as_markup())
@@ -107,7 +100,7 @@ async def start_user(message: Message, state: FSMContext, bot: Bot):
         await message.answer(text_obj.as_markdown(), parse_mode="MarkdownV2")
 
 
-@core_commands_router.callback_query(F.data.startswith(f"{CALLBACK_USER_ACCESS_REQUEST_PREFIX}:"))
+@core_commands_router.callback_query(F.data.startswith(f"{UserAccessCallback.PREFIX.value}:"))
 async def handle_user_access_request_cb(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
     if not callback_query.from_user or not callback_query.message:
         await callback_query.answer(MSG_ERROR_PROCESSING_ACTION_ALERT, show_alert=True)
@@ -116,8 +109,8 @@ async def handle_user_access_request_cb(callback_query: CallbackQuery, bot: Bot,
     action = callback_query.data.split(":")[1]
     user_id = callback_query.from_user.id
 
-    if action == CALLBACK_USER_ACCESS_REQUEST_ACTION:
-        await db.update_user_approval_status(user_id, USER_STATUS_PENDING_APPROVAL)
+    if action == UserAccessCallback.REQUEST.value:
+        await db.update_user_approval_status(user_id, UserStatus.PENDING_APPROVAL.value)
         logger.info("user %s requested access, status set to pending_approval.", user_id)
 
         text_obj = Text(MSG_USER_ACCESS_REQUEST_SUBMITTED)
@@ -135,16 +128,16 @@ async def handle_user_access_request_cb(callback_query: CallbackQuery, bot: Bot,
         admin_keyboard = InlineKeyboardBuilder()
         admin_keyboard.button(
             text=BTN_APPROVE_USER,
-            callback_data=f"{CALLBACK_MANAGE_USERS_PREFIX}:{CALLBACK_MANAGE_USERS_APPROVE}:{user_id}",
+            callback_data=f"{UserManageCallback.PREFIX.value}:{UserManageCallback.APPROVE.value}:{user_id}",
         )
         admin_keyboard.button(
             text=BTN_REJECT_USER,
-            callback_data=f"{CALLBACK_MANAGE_USERS_PREFIX}:{CALLBACK_MANAGE_USERS_REJECT}:{user_id}",
+            callback_data=f"{UserManageCallback.PREFIX.value}:{UserManageCallback.REJECT.value}:{user_id}",
         )
         admin_keyboard.adjust(1)
         await notify_admin_formatted(bot, admin_notify_text_obj, admin_keyboard.as_markup())
 
-    elif action == CALLBACK_USER_ACCESS_LATER_ACTION:
+    elif action == UserAccessCallback.LATER.value:
         text_obj = Text(MSG_USER_ACCESS_DEFERRED)
         await callback_query.message.edit_text(text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=None)
         await callback_query.answer(MSG_USER_ACCESS_DEFERRED_ALERT)
@@ -155,7 +148,8 @@ async def handle_user_access_request_cb(callback_query: CallbackQuery, bot: Bot,
 
 @core_commands_router.message(Command("cancel"), StateFilter("*"))
 @core_commands_router.callback_query(
-    F.data.in_({CALLBACK_ACTION_CANCEL, CALLBACK_MAIN_MENU_CANCEL_ACTION}), StateFilter("*")
+    F.data.in_({GenericCallbackAction.CANCEL.value, f"main_menu:{MainMenuCallback.CANCEL_ACTION.value}"}),
+    StateFilter("*"),
 )
 async def universal_cancel_handler(event: Union[Message, CallbackQuery], state: FSMContext, bot: Bot):
     user = event.from_user

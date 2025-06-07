@@ -7,10 +7,7 @@ from aiogram.utils.formatting import Text
 from telecopter.logger import setup_logger
 from telecopter.handlers.common_utils import is_admin
 from telecopter.handlers.menu_utils import show_main_menu_for_user, show_admin_panel
-from telecopter.constants import (
-    MSG_FALLBACK_UNHANDLED_TEXT,
-    MSG_FALLBACK_UNHANDLED_NON_TEXT,
-)
+from telecopter.constants import MSG_FALLBACK_UNHANDLED_TEXT, MSG_FALLBACK_UNHANDLED_NON_TEXT
 
 
 logger = setup_logger(__name__)

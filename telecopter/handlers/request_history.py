@@ -19,6 +19,7 @@ from telecopter.constants import (
     MSG_NO_MORE_REQUESTS,
     MSG_REQUESTS_PAGE_HEADER,
     MSG_ITEM_MESSAGE_DIVIDER,
+    MainMenuCallback,
 )
 
 
@@ -122,12 +123,12 @@ async def _send_my_requests_page_logic(
                 page_content_elements.append(as_list(*current_item_display_parts, sep=""))
                 page_content_elements.append(Text(MSG_ITEM_MESSAGE_DIVIDER))
 
-        if (
-            page_content_elements
-            and isinstance(page_content_elements[-1], Text)
-            and page_content_elements[-1].render()[0] == MSG_ITEM_MESSAGE_DIVIDER
-        ):
-            page_content_elements.pop()
+    if (
+        page_content_elements
+        and isinstance(page_content_elements[-1], Text)
+        and page_content_elements[-1].render()[0] == MSG_ITEM_MESSAGE_DIVIDER
+    ):
+        page_content_elements.pop()
 
     pagination_kb = get_my_requests_pagination_keyboard(page, total_pages)
     if pagination_kb:
@@ -135,7 +136,10 @@ async def _send_my_requests_page_logic(
             final_keyboard_builder.row(*row_buttons)
 
     final_keyboard_builder.row(
-        InlineKeyboardButton(text=BTN_BACK_TO_MAIN_MENU, callback_data="main_menu:show_start_menu_from_my_requests")
+        InlineKeyboardButton(
+            text=BTN_BACK_TO_MAIN_MENU,
+            callback_data=f"main_menu:{MainMenuCallback.SHOW_START_MENU_FROM_MY_REQUESTS.value}",
+        )
     )
     keyboard_to_show = final_keyboard_builder.as_markup()
 

@@ -20,7 +20,7 @@ from telecopter.constants import (
     PROMPT_PROBLEM_DESCRIPTION_RETRY,
     ERR_PROBLEM_DESCRIPTION_TOO_SHORT,
     BTN_CANCEL_ACTION,
-    CALLBACK_ACTION_CANCEL,
+    GenericCallbackAction,
 )
 
 
@@ -64,7 +64,7 @@ async def report_command_entry_handler(message: Message, state: FSMContext, bot:
 
     prompt_text_obj = Text(PROMPT_PROBLEM_DESCRIPTION)
     cancel_kb_builder = InlineKeyboardBuilder()
-    cancel_kb_builder.button(text=BTN_CANCEL_ACTION, callback_data=CALLBACK_ACTION_CANCEL)
+    cancel_kb_builder.button(text=BTN_CANCEL_ACTION, callback_data=GenericCallbackAction.CANCEL.value)
 
     await message.answer(
         prompt_text_obj.as_markdown(), parse_mode="MarkdownV2", reply_markup=cancel_kb_builder.as_markup()

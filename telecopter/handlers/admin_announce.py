@@ -21,7 +21,8 @@ from telecopter.constants import (
     BTN_ANNOUNCE_UNMUTED,
     BTN_ANNOUNCE_MUTED,
     BTN_ANNOUNCE_CANCEL,
-    ICON_ANNOUNCEMENT,
+    Icon,
+    AdminAnnounceAction,
 )
 
 
@@ -32,9 +33,13 @@ admin_announce_router = Router(name="admin_announce_router")
 ANNOUNCE_TYPE_KEYBOARD = (
     InlineKeyboardBuilder()
     .add(
-        InlineKeyboardButton(text=BTN_ANNOUNCE_UNMUTED, callback_data="announce_type:unmuted"),
-        InlineKeyboardButton(text=BTN_ANNOUNCE_MUTED, callback_data="announce_type:muted"),
-        InlineKeyboardButton(text=BTN_ANNOUNCE_CANCEL, callback_data="announce_type:cancel_to_panel"),
+        InlineKeyboardButton(
+            text=BTN_ANNOUNCE_UNMUTED, callback_data=f"announce_type:{AdminAnnounceAction.UNMUTED.value}"
+        ),
+        InlineKeyboardButton(text=BTN_ANNOUNCE_MUTED, callback_data=f"announce_type:{AdminAnnounceAction.MUTED.value}"),
+        InlineKeyboardButton(
+            text=BTN_ANNOUNCE_CANCEL, callback_data=f"announce_type:{AdminAnnounceAction.CANCEL.value}"
+        ),
     )
     .adjust(2, 1)
     .as_markup()
@@ -74,7 +79,7 @@ async def process_announcement_type_cb(callback_query: CallbackQuery, state: FSM
     action = callback_query.data.split(":")[1]
     await callback_query.answer()
 
-    if action == "cancel_to_panel":
+    if action == AdminAnnounceAction.CANCEL.value:
         await state.clear()
         if callback_query.message:
             try:
@@ -86,7 +91,7 @@ async def process_announcement_type_cb(callback_query: CallbackQuery, state: FSM
         await show_admin_panel(callback_query, bot)
         return
 
-    is_muted = action == "muted"
+    is_muted = action == AdminAnnounceAction.MUTED.value
     await state.update_data(is_muted=is_muted)
     await state.set_state(AdminAnnounceStates.typing_message)
 
@@ -113,7 +118,7 @@ async def process_announcement_message_text(message: Message, state: FSMContext,
     await state.clear()
 
     formatted_announcement_content = Text(
-        Bold(ICON_ANNOUNCEMENT, " Announcement from admin:"), "\n\n", Text(announcement_text_from_admin)
+        Bold(Icon.ANNOUNCEMENT.value, " Announcement from admin:"), "\n\n", Text(announcement_text_from_admin)
     )
     final_message_to_send_md = formatted_announcement_content.as_markdown()
 

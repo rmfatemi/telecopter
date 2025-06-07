@@ -6,7 +6,7 @@ from typing import Optional, List
 
 from telecopter.logger import setup_logger
 from telecopter.config import DATABASE_FILE_PATH, DEFAULT_PAGE_SIZE
-from telecopter.constants import USER_STATUS_NEW, USER_STATUS_APPROVED, USER_STATUS_PENDING_APPROVAL
+from telecopter.constants import UserStatus, RequestStatus
 
 
 logger = setup_logger(__name__)
@@ -22,7 +22,7 @@ async def initialize_database():
                 chat_id integer unique not null,
                 username text,
                 first_name text,
-                approval_status text not null default '{USER_STATUS_NEW}',
+                approval_status text not null default '{UserStatus.NEW.value}',
                 created_at text not null default current_timestamp,
                 last_active_at text not null default current_timestamp
             )
@@ -30,50 +30,50 @@ async def initialize_database():
         logger.info("users table initialized.")
 
         await db.execute("""
-                        create table if not exists requests
-                        (
-                            request_id  integer primary key autoincrement,
-                            user_id     integer not null,
-                            request_type text   not null,
-                            status      text   not null,
-                            tmdb_id     integer,
-                            title       text   not null,
-                            year        integer,
-                            imdb_id     text,
-                            user_query  text,
-                            user_note   text,
-                            admin_note  text,
-                            created_at  text   not null default current_timestamp,
-                            updated_at  text   not null default current_timestamp,
-                            foreign key (user_id) references users (user_id)
-                        )
-                        """)
+                            create table if not exists requests
+                            (
+                                request_id  integer primary key autoincrement,
+                                user_id     integer not null,
+                                request_type text   not null,
+                                status      text   not null,
+                                tmdb_id     integer,
+                                title       text   not null,
+                                year        integer,
+                                imdb_id     text,
+                                user_query  text,
+                                user_note   text,
+                                admin_note  text,
+                                created_at  text   not null default current_timestamp,
+                                updated_at  text   not null default current_timestamp,
+                                foreign key (user_id) references users (user_id)
+                            )
+                            """)
         logger.info("requests table initialized.")
 
         await db.execute("""
-                        create trigger if not exists update_requests_updated_at
-                            after update
-                            on requests
-                            for each row
-                        begin
-                            update requests set updated_at = current_timestamp where request_id = old.request_id;
-                        end;
-                        """)
+                            create trigger if not exists update_requests_updated_at
+                                after update
+                                on requests
+                                for each row
+                            begin
+                                update requests set updated_at = current_timestamp where request_id = old.request_id;
+                            end;
+                            """)
         logger.info("requests table 'updated_at' trigger initialized.")
 
         await db.execute("""
-                        create table if not exists admin_logs
-                        (
-                            log_id        integer primary key autoincrement,
-                            admin_user_id integer not null,
-                            request_id    integer,
-                            action        text   not null,
-                            details       text,
-                            created_at    text   not null default current_timestamp,
-                            foreign key (request_id) references requests (request_id),
-                            foreign key (admin_user_id) references users (user_id)
-                        )
-                        """)
+                            create table if not exists admin_logs
+                            (
+                                log_id      integer primary key autoincrement,
+                                admin_user_id integer not null,
+                                request_id  integer,
+                                action      text   not null,
+                                details     text,
+                                created_at  text   not null default current_timestamp,
+                                foreign key (request_id) references requests (request_id),
+                                foreign key (admin_user_id) references users (user_id)
+                            )
+                            """)
         logger.info("admin_logs table initialized.")
         await db.commit()
     logger.info("database initialization complete.")
@@ -100,7 +100,7 @@ async def add_or_update_user(
                 (chat_id, username, first_name, now, user_id),
             )
         else:
-            initial_approval_status = USER_STATUS_APPROVED if is_admin_user else USER_STATUS_NEW
+            initial_approval_status = UserStatus.APPROVED.value if is_admin_user else UserStatus.NEW.value
             await db.execute(
                 """
                 insert into users (user_id, chat_id, username, first_name, approval_status, created_at, last_active_at)
@@ -153,7 +153,7 @@ async def get_pending_approval_users(page: int, page_size: int = DEFAULT_PAGE_SI
         db.row_factory = aiosqlite.Row
         async with db.execute(
             "select * from users where approval_status = ? order by created_at asc limit ? offset ?",
-            (USER_STATUS_PENDING_APPROVAL, page_size, offset),
+            (UserStatus.PENDING_APPROVAL.value, page_size, offset),
         ) as cursor:
             return await cursor.fetchall()
 
@@ -161,7 +161,7 @@ async def get_pending_approval_users(page: int, page_size: int = DEFAULT_PAGE_SI
 async def get_pending_approval_users_count() -> int:
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
         async with db.execute(
-            "select count(*) from users where approval_status = ?", (USER_STATUS_PENDING_APPROVAL,)
+            "select count(*) from users where approval_status = ?", (UserStatus.PENDING_APPROVAL.value,)
         ) as cursor:
             total_row = await cursor.fetchone()
             return total_row[0] if total_row else 0
@@ -171,7 +171,7 @@ async def add_request(
     user_id: int,
     request_type: str,
     title: str,
-    status: str = "pending_admin",
+    status: str = RequestStatus.PENDING_ADMIN.value,  # Changed this line
     tmdb_id: Optional[int] = None,
     year: Optional[int] = None,
     imdb_id: Optional[str] = None,
@@ -247,12 +247,12 @@ async def get_user_requests(user_id: int, page: int = 1, page_size: int = DEFAUL
         db.row_factory = aiosqlite.Row
         async with db.execute(
             """
-                select *
-                from requests
-                where user_id = ?
-                order by created_at desc
-                limit ? offset ?
-                """,
+            select *
+            from requests
+            where user_id = ?
+            order by created_at desc
+            limit ? offset ?
+            """,
             (user_id, page_size, offset),
         ) as cursor:
             return await cursor.fetchall()
@@ -323,10 +323,11 @@ async def get_all_user_chat_ids() -> list[int]:
 async def get_request_submitter_chat_id(request_id: int) -> int | None:
     async with aiosqlite.connect(DATABASE_FILE_PATH) as db:
         query = """
-                select u.chat_id
-                from requests r
-                         join users u on r.user_id = u.user_id
-                where r.request_id = ?                """
+                    select u.chat_id
+                    from requests r
+                            join users u on r.user_id = u.user_id
+                    where r.request_id = ?
+                    """
         async with db.execute(query, (request_id,)) as cursor:
             row = await cursor.fetchone()
             return row[0] if row else None
@@ -336,11 +337,18 @@ async def get_actionable_admin_requests(page: int, page_size: int = DEFAULT_PAGE
     offset = (page - 1) * page_size
     async with aiosqlite.connect(DATABASE_FILE_PATH) as conn:
         conn.row_factory = aiosqlite.Row
-        query = """
-                select * from requests
-                where status = 'pending_admin'                   or status = 'approved'
-                order by case status                          when 'pending_admin' then 1                          when 'approved' then 2                          else 3                          end,                         created_at asc
-                limit ? offset ?                 """
+        query = f"""
+                    select * from requests
+                    where status = '{RequestStatus.PENDING_ADMIN.value}'
+                       or status = '{RequestStatus.APPROVED.value}'
+                    order by case status
+                                 when '{RequestStatus.PENDING_ADMIN.value}' then 1
+                                 when '{RequestStatus.APPROVED.value}' then 2
+                                 else 3
+                             end,
+                             created_at asc
+                    limit ? offset ?
+                    """
         cursor = await conn.execute(query, (page_size, offset))
         return await cursor.fetchall()
 
@@ -348,7 +356,8 @@ async def get_actionable_admin_requests(page: int, page_size: int = DEFAULT_PAGE
 async def get_actionable_admin_requests_count() -> int:
     async with aiosqlite.connect(DATABASE_FILE_PATH) as conn:
         cursor = await conn.execute(
-            "select count(*) from requests where status = 'pending_admin' or status = 'approved'"
+            f"select count(*) from requests where status = '{RequestStatus.PENDING_ADMIN.value}' or status ="
+            f" '{RequestStatus.APPROVED.value}'"
         )
         result = await cursor.fetchone()
         return result[0] if result and result[0] is not None else 0

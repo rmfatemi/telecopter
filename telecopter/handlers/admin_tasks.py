@@ -20,15 +20,14 @@ from telecopter.constants import (
     BTN_PREVIOUS_PAGE,
     BTN_NEXT_PAGE,
     BTN_BACK_TO_ADMIN_PANEL,
-    CALLBACK_ADMIN_TASKS_PAGE_PREFIX,
-    CALLBACK_ADMIN_TASKS_BACK_PANEL,
-    CALLBACK_ADMIN_TASK_MODERATE_PREFIX,
+    AdminTasksCallback,
     MSG_ACCESS_DENIED,
     MSG_ADMIN_REQUEST_NOT_FOUND,
     MSG_ADMIN_TASK_IDENTIFY_ERROR,
     MSG_ADMIN_TASK_USER_NOT_FOUND_ERROR,
     MSG_NO_TASKS_INFO_TO_DISPLAY,
     MSG_ITEM_MESSAGE_DIVIDER,
+    RequestType,
 )
 
 
@@ -42,13 +41,13 @@ def get_admin_tasks_pagination_keyboard(page: int, total_pages: int) -> Optional
     prev_button: Optional[InlineKeyboardButton] = None
     if page > 1:
         prev_button = InlineKeyboardButton(
-            text=BTN_PREVIOUS_PAGE, callback_data=f"{CALLBACK_ADMIN_TASKS_PAGE_PREFIX}:{page - 1}"
+            text=BTN_PREVIOUS_PAGE, callback_data=f"{AdminTasksCallback.PAGE_PREFIX.value}:{page - 1}"
         )
 
     next_button: Optional[InlineKeyboardButton] = None
     if page < total_pages:
         next_button = InlineKeyboardButton(
-            text=BTN_NEXT_PAGE, callback_data=f"{CALLBACK_ADMIN_TASKS_PAGE_PREFIX}:{page + 1}"
+            text=BTN_NEXT_PAGE, callback_data=f"{AdminTasksCallback.PAGE_PREFIX.value}:{page + 1}"
         )
 
     if prev_button and next_button:
@@ -108,7 +107,7 @@ async def list_admin_tasks(message_to_edit: Message, acting_user_id: int, bot: B
             )
 
             tasks_keyboard_builder.button(
-                text=f"Review Task ({req_id})", callback_data=f"{CALLBACK_ADMIN_TASK_MODERATE_PREFIX}:{req_id}"
+                text=f"Review Task ({req_id})", callback_data=f"{AdminTasksCallback.MODERATE_PREFIX.value}:{req_id}"
             )
 
             if item_text_parts:
@@ -124,7 +123,7 @@ async def list_admin_tasks(message_to_edit: Message, acting_user_id: int, bot: B
             tasks_keyboard_builder.row(*row_of_buttons)
 
     tasks_keyboard_builder.row(
-        InlineKeyboardButton(text=BTN_BACK_TO_ADMIN_PANEL, callback_data=CALLBACK_ADMIN_TASKS_BACK_PANEL)
+        InlineKeyboardButton(text=BTN_BACK_TO_ADMIN_PANEL, callback_data=AdminTasksCallback.BACK_TO_PANEL.value)
     )
 
     if (
@@ -154,7 +153,7 @@ async def list_admin_tasks(message_to_edit: Message, acting_user_id: int, bot: B
             )
 
 
-@admin_tasks_router.callback_query(F.data.startswith(CALLBACK_ADMIN_TASKS_PAGE_PREFIX + ":"), IsAdminFilter())
+@admin_tasks_router.callback_query(F.data.startswith(AdminTasksCallback.PAGE_PREFIX.value + ":"), IsAdminFilter())
 async def admin_tasks_page_cb(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
     acting_user_id = callback_query.from_user.id
     page = 1
@@ -172,13 +171,13 @@ async def admin_tasks_page_cb(callback_query: CallbackQuery, bot: Bot, state: FS
     )
 
 
-@admin_tasks_router.callback_query(F.data == CALLBACK_ADMIN_TASKS_BACK_PANEL, IsAdminFilter())
+@admin_tasks_router.callback_query(F.data == AdminTasksCallback.BACK_TO_PANEL.value, IsAdminFilter())
 async def admin_tasks_back_panel_cb(callback_query: CallbackQuery, bot: Bot):
     await callback_query.answer()
     await show_admin_panel(callback_query, bot)
 
 
-@admin_tasks_router.callback_query(F.data.startswith(CALLBACK_ADMIN_TASK_MODERATE_PREFIX + ":"), IsAdminFilter())
+@admin_tasks_router.callback_query(F.data.startswith(AdminTasksCallback.MODERATE_PREFIX.value + ":"), IsAdminFilter())
 async def admin_task_moderate_trigger_cb(callback_query: CallbackQuery, bot: Bot):
     action_parts = callback_query.data.split(":")
     if len(action_parts) < 2:
@@ -213,7 +212,7 @@ async def admin_task_moderate_trigger_cb(callback_query: CallbackQuery, bot: Bot
     await callback_query.answer()
     admin_msg_obj = format_request_for_admin(db_request_dict, dict(submitter_user_info_row))
     admin_keyboard = None
-    if db_request_dict["request_type"] == "problem":
+    if db_request_dict["request_type"] == RequestType.PROBLEM.value:
         admin_keyboard = get_admin_report_action_keyboard(request_id)
     else:
         admin_keyboard = get_admin_request_action_keyboard(request_id)

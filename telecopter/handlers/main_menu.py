@@ -16,7 +16,8 @@ from telecopter.constants import (
     MSG_MAIN_MENU_MEDIA_SEARCH_UNAVAILABLE,
     PROMPT_PROBLEM_DESCRIPTION,
     BTN_CANCEL_ACTION,
-    CALLBACK_ACTION_CANCEL,
+    MainMenuCallback,
+    GenericCallbackAction,
 )
 
 
@@ -25,7 +26,7 @@ logger = setup_logger(__name__)
 main_menu_router = Router(name="main_menu_router")
 
 
-@main_menu_router.callback_query(F.data == "main_menu:request_media")
+@main_menu_router.callback_query(F.data == f"main_menu:{MainMenuCallback.REQUEST_MEDIA.value}")
 async def main_menu_request_media_cb(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
     if not callback_query.message or not callback_query.from_user:
         return
@@ -42,7 +43,7 @@ async def main_menu_request_media_cb(callback_query: CallbackQuery, state: FSMCo
 
     text_obj = Text(PROMPT_MAIN_MENU_REQUEST_MEDIA)
     cancel_kb_builder = InlineKeyboardBuilder()
-    cancel_kb_builder.button(text=BTN_CANCEL_ACTION, callback_data=CALLBACK_ACTION_CANCEL)
+    cancel_kb_builder.button(text=BTN_CANCEL_ACTION, callback_data=GenericCallbackAction.CANCEL.value)
     try:
         await callback_query.message.edit_text(
             text_obj.as_markdown(), reply_markup=cancel_kb_builder.as_markup(), parse_mode="MarkdownV2"
@@ -62,7 +63,7 @@ async def main_menu_request_media_cb(callback_query: CallbackQuery, state: FSMCo
     await state.set_state(RequestMediaStates.typing_media_name)
 
 
-@main_menu_router.callback_query(F.data == "main_menu:my_requests")
+@main_menu_router.callback_query(F.data == f"main_menu:{MainMenuCallback.MY_REQUESTS.value}")
 async def main_menu_my_requests_cb(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
     if not callback_query.message or not callback_query.from_user:
         return
@@ -79,7 +80,7 @@ async def main_menu_my_requests_cb(callback_query: CallbackQuery, state: FSMCont
     )
 
 
-@main_menu_router.callback_query(F.data == "main_menu:report_problem")
+@main_menu_router.callback_query(F.data == f"main_menu:{MainMenuCallback.REPORT_PROBLEM.value}")
 async def main_menu_report_problem_cb(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
     if not callback_query.message or not callback_query.from_user:
         return
@@ -91,7 +92,7 @@ async def main_menu_report_problem_cb(callback_query: CallbackQuery, state: FSMC
 
     text_obj = Text(PROMPT_PROBLEM_DESCRIPTION)
     cancel_kb_builder = InlineKeyboardBuilder()
-    cancel_kb_builder.button(text=BTN_CANCEL_ACTION, callback_data=CALLBACK_ACTION_CANCEL)
+    cancel_kb_builder.button(text=BTN_CANCEL_ACTION, callback_data=GenericCallbackAction.CANCEL.value)
 
     try:
         await callback_query.message.edit_text(
@@ -113,7 +114,7 @@ async def main_menu_report_problem_cb(callback_query: CallbackQuery, state: FSMC
     await state.set_state(ReportProblemStates.typing_problem)
 
 
-@main_menu_router.callback_query(F.data == "main_menu:show_start_menu_from_my_requests")
+@main_menu_router.callback_query(F.data == f"main_menu:{MainMenuCallback.SHOW_START_MENU_FROM_MY_REQUESTS.value}")
 async def handle_back_to_main_menu_cb(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
     await callback_query.answer()
     if not callback_query.from_user or not callback_query.message:

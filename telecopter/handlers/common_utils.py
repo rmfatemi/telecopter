@@ -13,10 +13,7 @@ import telecopter.database as db
 from telecopter.logger import setup_logger
 from telecopter.config import ADMIN_CHAT_IDS
 from telecopter.constants import (
-    USER_STATUS_APPROVED,
-    USER_STATUS_PENDING_APPROVAL,
-    USER_STATUS_REJECTED,
-    USER_STATUS_NEW,
+    UserStatus,
     MSG_USER_ACCESS_PENDING_INFO,
     MSG_USER_REJECTED_INFO,
     MSG_USER_NEW_INFO_START_REQUIRED,
@@ -108,13 +105,13 @@ async def ensure_user_approved(event: Union[Message, CallbackQuery], bot: Bot, s
     show_alert_flag = isinstance(event, CallbackQuery)
     user_can_proceed = False
 
-    if user_status == USER_STATUS_APPROVED:
+    if user_status == UserStatus.APPROVED.value:
         user_can_proceed = True
-    elif user_status == USER_STATUS_PENDING_APPROVAL:
+    elif user_status == UserStatus.PENDING_APPROVAL.value:
         message_text = MSG_USER_ACCESS_PENDING_INFO
-    elif user_status == USER_STATUS_REJECTED:
+    elif user_status == UserStatus.REJECTED.value:
         message_text = MSG_USER_REJECTED_INFO
-    elif user_status == USER_STATUS_NEW:
+    elif user_status == UserStatus.NEW.value:
         message_text = MSG_USER_NEW_INFO_START_REQUIRED
     else:
         message_text = MSG_USER_UNKNOWN_STATUS_INFO

@@ -5,14 +5,9 @@ from aiogram.utils.formatting import Text, Bold, Italic, TextLink, Code, as_list
 from telecopter.logger import setup_logger
 from telecopter.config import TMDB_MOVIE_URL_BASE, TMDB_TV_URL_BASE, IMDB_TITLE_URL_BASE
 from telecopter.constants import (
-    MEDIA_TYPE_MOVIE,
-    MEDIA_TYPE_TV,
-    MEDIA_TYPE_MANUAL,
-    ICON_MOVIE,
-    ICON_TV_SHOW,
-    ICON_MANUAL_REQUEST,
-    ICON_PROBLEM_REPORT,
-    ICON_GENERIC_REQUEST,
+    MediaType,
+    Icon,
+    RequestType,
 )
 
 
@@ -20,9 +15,9 @@ logger = setup_logger(__name__)
 
 
 def make_tmdb_url(tmdb_id: int, media_type: str) -> Optional[str]:
-    if media_type == MEDIA_TYPE_MOVIE:
+    if media_type == MediaType.MOVIE.value:
         return f"{TMDB_MOVIE_URL_BASE}{tmdb_id}"
-    elif media_type == MEDIA_TYPE_TV:
+    elif media_type == MediaType.TV.value:
         return f"{TMDB_TV_URL_BASE}{tmdb_id}"
     logger.warning("unsupported media type '%s' for tmdb url generation.", media_type)
     return None
@@ -53,10 +48,10 @@ def format_media_details_for_user(details: Dict, for_admin_notification: bool = 
 
     media_type = details.get("media_type")
     media_type_icon_and_name_str = ""
-    if media_type == MEDIA_TYPE_MOVIE:
-        media_type_icon_and_name_str = f"{ICON_MOVIE} Movie"
-    elif media_type == MEDIA_TYPE_TV:
-        media_type_icon_and_name_str = f"{ICON_TV_SHOW} TV Show"
+    if media_type == MediaType.MOVIE.value:
+        media_type_icon_and_name_str = f"{Icon.MOVIE.value} Movie"
+    elif media_type == MediaType.TV.value:
+        media_type_icon_and_name_str = f"{Icon.TV_SHOW.value} TV Show"
 
     overview_max_len = 300 if for_admin_notification else 500
     overview_content = details.get("overview", "No synopsis available.")
@@ -116,20 +111,20 @@ def format_request_for_admin(request_data: Dict, user_info: Optional[Dict] = Non
     req_type_icon_str: str
     req_type_display_name: str
 
-    if req_type == MEDIA_TYPE_MOVIE:
-        req_type_icon_str = ICON_MOVIE
+    if req_type == MediaType.MOVIE.value:
+        req_type_icon_str = Icon.MOVIE.value
         req_type_display_name = "Movie"
-    elif req_type == MEDIA_TYPE_TV:
-        req_type_icon_str = ICON_TV_SHOW
+    elif req_type == MediaType.TV.value:
+        req_type_icon_str = Icon.TV_SHOW.value
         req_type_display_name = "TV Show"
-    elif req_type == MEDIA_TYPE_MANUAL:
-        req_type_icon_str = ICON_MANUAL_REQUEST
+    elif req_type == MediaType.MANUAL.value:
+        req_type_icon_str = Icon.MANUAL_REQUEST.value
         req_type_display_name = "Manual Request"
-    elif req_type == "problem":
-        req_type_icon_str = ICON_PROBLEM_REPORT
+    elif req_type == RequestType.PROBLEM.value:
+        req_type_icon_str = Icon.PROBLEM_REPORT.value
         req_type_display_name = "Problem Report"
     else:
-        req_type_icon_str = ICON_GENERIC_REQUEST
+        req_type_icon_str = Icon.GENERIC_REQUEST.value
         req_type_display_name = req_type.replace("_", " ").title() if req_type else "Unknown Type"
 
     message_items: List[Union[Text, Bold, Italic, Code, TextLink]] = [
@@ -140,13 +135,13 @@ def format_request_for_admin(request_data: Dict, user_info: Optional[Dict] = Non
         Text(Bold("Title:"), " ", Italic(req_title_raw)),
     ]
 
-    if req_type in [MEDIA_TYPE_MOVIE, MEDIA_TYPE_TV, MEDIA_TYPE_MANUAL]:
+    if req_type in [MediaType.MOVIE.value, MediaType.TV.value, MediaType.MANUAL.value]:
         year_val = request_data.get("year")
         if year_val:
             message_items.append(Text(Bold("Year:"), " ", Text(str(year_val))))
 
         tmdb_id_val = request_data.get("tmdb_id")
-        if tmdb_id_val is not None and req_type in [MEDIA_TYPE_MOVIE, MEDIA_TYPE_TV]:
+        if tmdb_id_val is not None and req_type in [MediaType.MOVIE.value, MediaType.TV.value]:
             tmdb_url = make_tmdb_url(tmdb_id_val, req_type)
             if tmdb_url:
                 message_items.append(Text(Bold("TMDB:"), " ", TextLink("Link", url=tmdb_url)))
@@ -155,7 +150,9 @@ def format_request_for_admin(request_data: Dict, user_info: Optional[Dict] = Non
         if imdb_id_val:
             imdb_url = make_imdb_url(imdb_id_val)
             if imdb_url:
-                message_items.append(Text(Bold("IMDB:"), " ", TextLink("Link", url=imdb_url)))
+                if message_items:
+                    message_items.append(Text(" | "))  # Adjusting for correct placement
+                message_items.append(TextLink("View on IMDB", url=imdb_url))
 
         if user_query_raw and user_query_raw != "N/A":
             message_items.append(Text(Bold("User Query:"), " ", Code(user_query_raw)))
@@ -182,20 +179,20 @@ def format_request_item_display_parts(
     item_icon_str: str
     request_type_display_str: str
 
-    if req_type == MEDIA_TYPE_MOVIE:
-        item_icon_str = ICON_MOVIE
+    if req_type == MediaType.MOVIE.value:
+        item_icon_str = Icon.MOVIE.value
         request_type_display_str = "Movie"
-    elif req_type == MEDIA_TYPE_TV:
-        item_icon_str = ICON_TV_SHOW
+    elif req_type == MediaType.TV.value:
+        item_icon_str = Icon.TV_SHOW.value
         request_type_display_str = "TV Show"
-    elif req_type == MEDIA_TYPE_MANUAL:
-        item_icon_str = ICON_MANUAL_REQUEST
+    elif req_type == MediaType.MANUAL.value:
+        item_icon_str = Icon.MANUAL_REQUEST.value
         request_type_display_str = "Manual Request"
-    elif req_type == "problem":
-        item_icon_str = ICON_PROBLEM_REPORT
+    elif req_type == RequestType.PROBLEM.value:
+        item_icon_str = Icon.PROBLEM_REPORT.value
         request_type_display_str = "Problem Report"
     else:
-        item_icon_str = ICON_GENERIC_REQUEST
+        item_icon_str = Icon.GENERIC_REQUEST.value
         request_type_display_str = req_type.replace("_", " ").title() if req_type else "Task"
 
     display_parts: List[Union[Text, Bold, Italic, Code]] = [Text(item_icon_str, " ", Bold(request_type_display_str))]

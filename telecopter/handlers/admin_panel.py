@@ -7,12 +7,7 @@ from telecopter.handlers.common_utils import IsAdminFilter
 from telecopter.handlers.admin_tasks import list_admin_tasks
 from telecopter.handlers.admin_users import list_pending_users
 from telecopter.handlers.admin_announce import ask_announcement_type
-from telecopter.constants import (
-    CALLBACK_ADMIN_PANEL_PREFIX,
-    CALLBACK_ADMIN_PANEL_VIEW_TASKS,
-    CALLBACK_ADMIN_PANEL_MANAGE_USERS,
-    CALLBACK_ADMIN_PANEL_SEND_ANNOUNCEMENT,
-)
+from telecopter.constants import AdminPanelCallback
 
 
 logger = setup_logger(__name__)
@@ -20,9 +15,7 @@ logger = setup_logger(__name__)
 admin_panel_router = Router(name="admin_panel_router")
 
 
-@admin_panel_router.callback_query(
-    F.data == f"{CALLBACK_ADMIN_PANEL_PREFIX}:{CALLBACK_ADMIN_PANEL_VIEW_TASKS}", IsAdminFilter()
-)
+@admin_panel_router.callback_query(F.data == f"admin_panel:{AdminPanelCallback.VIEW_TASKS.value}", IsAdminFilter())
 async def admin_panel_view_tasks_cb(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
     await callback_query.answer()
     if callback_query.message and callback_query.from_user:
@@ -35,9 +28,7 @@ async def admin_panel_view_tasks_cb(callback_query: CallbackQuery, bot: Bot, sta
         )
 
 
-@admin_panel_router.callback_query(
-    F.data == f"{CALLBACK_ADMIN_PANEL_PREFIX}:{CALLBACK_ADMIN_PANEL_MANAGE_USERS}", IsAdminFilter()
-)
+@admin_panel_router.callback_query(F.data == f"admin_panel:{AdminPanelCallback.MANAGE_USERS.value}", IsAdminFilter())
 async def admin_panel_manage_users_cb(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
     await callback_query.answer()
     if callback_query.message:
@@ -45,7 +36,7 @@ async def admin_panel_manage_users_cb(callback_query: CallbackQuery, bot: Bot, s
 
 
 @admin_panel_router.callback_query(
-    F.data == f"{CALLBACK_ADMIN_PANEL_PREFIX}:{CALLBACK_ADMIN_PANEL_SEND_ANNOUNCEMENT}", IsAdminFilter()
+    F.data == f"admin_panel:{AdminPanelCallback.SEND_ANNOUNCEMENT.value}", IsAdminFilter()
 )
 async def admin_panel_send_announcement_cb(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
     await callback_query.answer()
