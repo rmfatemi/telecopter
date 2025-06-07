@@ -9,9 +9,9 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 import telecopter.database as db
 from telecopter.logger import setup_logger
 from telecopter.config import DEFAULT_PAGE_SIZE
-from telecopter.utils import format_request_for_admin, format_request_item_display_parts
-from telecopter.handlers.common_utils import is_admin, IsAdminFilter
 from telecopter.handlers.menu_utils import show_admin_panel
+from telecopter.handlers.common_utils import is_admin, IsAdminFilter
+from telecopter.utils import format_request_for_admin, format_request_item_display_parts
 from telecopter.handlers.admin_moderate import get_admin_request_action_keyboard, get_admin_report_action_keyboard
 from telecopter.constants import (
     TITLE_ADMIN_TASKS_LIST,

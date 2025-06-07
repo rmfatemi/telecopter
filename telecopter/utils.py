@@ -5,8 +5,8 @@ from aiogram.utils.formatting import Text, Bold, Italic, TextLink, Code, as_list
 from telecopter.logger import setup_logger
 from telecopter.config import TMDB_MOVIE_URL_BASE, TMDB_TV_URL_BASE, IMDB_TITLE_URL_BASE
 from telecopter.constants import (
-    MediaType,
     Icon,
+    MediaType,
     RequestType,
 )
 
@@ -151,7 +151,7 @@ def format_request_for_admin(request_data: Dict, user_info: Optional[Dict] = Non
             imdb_url = make_imdb_url(imdb_id_val)
             if imdb_url:
                 if message_items:
-                    message_items.append(Text(" | "))  # Adjusting for correct placement
+                    message_items.append(Text(" | "))
                 message_items.append(TextLink("View on IMDB", url=imdb_url))
 
         if user_query_raw and user_query_raw != "N/A":

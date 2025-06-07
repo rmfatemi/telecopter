@@ -88,7 +88,6 @@ def get_admin_report_action_keyboard(request_id: int) -> InlineKeyboardMarkup:
     builder.button(
         text=BTN_MOD_ACKNOWLEDGE, callback_data=f"admin_act:{AdminModerateAction.ACKNOWLEDGE.value}:{request_id}"
     )
-    # Changed callback data to trigger note-taking flow directly for 'resolve'
     builder.button(
         text=BTN_MOD_MARK_RESOLVED,
         callback_data=f"admin_act:{AdminModerateAction.MARK_RESOLVED.value}_with_note:{request_id}",
@@ -96,7 +95,7 @@ def get_admin_report_action_keyboard(request_id: int) -> InlineKeyboardMarkup:
     builder.button(
         text=BTN_MOD_SHELVING_DECISION, callback_data=f"admin_act:{AdminModerateAction.CLOSE_TASK.value}:{request_id}"
     )
-    builder.adjust(1, 1, 1)  # Adjusted layout
+    builder.adjust(1, 1, 1)
     return builder.as_markup()
 
 
@@ -249,8 +248,8 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
         new_status = RequestStatus.COMPLETED.value
     elif base_action_key == AdminModerateAction.ACKNOWLEDGE.value:
         new_status = RequestStatus.ACKNOWLEDGED.value
-    elif base_action_key == AdminModerateAction.MARK_RESOLVED.value:  # Added this case
-        new_status = RequestStatus.COMPLETED.value  # Assuming 'resolved' means 'completed' in terms of status
+    elif base_action_key == AdminModerateAction.MARK_RESOLVED.value:
+        new_status = RequestStatus.COMPLETED.value
 
     admin_confirm_log_msg_raw: str
     if new_status:
@@ -322,8 +321,8 @@ async def admin_note_handler(message: Message, state: FSMContext, bot: Bot):
         new_status = RequestStatus.DENIED.value
     elif base_action == AdminModerateAction.MARK_COMPLETED.value:
         new_status = RequestStatus.COMPLETED.value
-    elif base_action == AdminModerateAction.MARK_RESOLVED.value:  # Added this case
-        new_status = RequestStatus.COMPLETED.value  # Assuming 'resolved' means 'completed'
+    elif base_action == AdminModerateAction.MARK_RESOLVED.value:
+        new_status = RequestStatus.COMPLETED.value
 
     admin_confirm_log_msg_raw: str
     full_action_key = f"{base_action}_with_note"

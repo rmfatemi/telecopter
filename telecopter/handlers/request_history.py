@@ -8,9 +8,9 @@ from aiogram.utils.formatting import Text, Bold, Italic, Code, as_list
 from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup, InlineKeyboardButton
 
 import telecopter.database as db
-from telecopter.utils import format_request_item_display_parts
 from telecopter.logger import setup_logger
 from telecopter.config import DEFAULT_PAGE_SIZE
+from telecopter.utils import format_request_item_display_parts
 from telecopter.constants import (
     BTN_PREVIOUS_PAGE,
     BTN_NEXT_PAGE,

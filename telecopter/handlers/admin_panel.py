@@ -3,11 +3,11 @@ from aiogram.types import CallbackQuery
 from aiogram.fsm.context import FSMContext
 
 from telecopter.logger import setup_logger
+from telecopter.constants import AdminPanelCallback
 from telecopter.handlers.common_utils import IsAdminFilter
 from telecopter.handlers.admin_tasks import list_admin_tasks
 from telecopter.handlers.admin_users import list_pending_users
 from telecopter.handlers.admin_announce import ask_announcement_type
-from telecopter.constants import AdminPanelCallback
 
 
 logger = setup_logger(__name__)

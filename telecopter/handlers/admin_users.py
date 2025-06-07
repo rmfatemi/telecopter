@@ -1,9 +1,9 @@
 from typing import List, Union
 
 from aiogram import Router, F, Bot
-from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.utils.formatting import Text, Bold, Italic, Code, as_list, TextLink
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.utils.formatting import Text, Bold, Italic, Code, as_list, TextLink
+from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup, InlineKeyboardButton
 
 import telecopter.database as db
 from telecopter.logger import setup_logger

@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Optional, List
 
 from telecopter.logger import setup_logger
-from telecopter.config import DATABASE_FILE_PATH, DEFAULT_PAGE_SIZE
 from telecopter.constants import UserStatus, RequestStatus
+from telecopter.config import DATABASE_FILE_PATH, DEFAULT_PAGE_SIZE
 
 
 logger = setup_logger(__name__)

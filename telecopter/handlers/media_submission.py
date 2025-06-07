@@ -2,9 +2,9 @@ from aiogram import Router, F, Bot
 from aiogram.filters import StateFilter
 from aiogram.utils.formatting import Text
 from aiogram.fsm.context import FSMContext
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup
-from aiogram.exceptions import TelegramBadRequest # Import TelegramBadRequest for specific error handling
 
 import telecopter.database as db
 from telecopter.logger import setup_logger
@@ -103,9 +103,12 @@ async def confirm_media_request_cb(callback_query: CallbackQuery, state: FSMCont
         await callback_query.message.edit_reply_markup(reply_markup=None)
     except TelegramBadRequest as e:
         if "message is not modified" in str(e).lower():
-            logger.debug("Confirmation message not modified (buttons already removed or never existed).")
+            logger.debug("confirmation message not modified (buttons already removed or never existed).")
         elif "message can't be edited" in str(e).lower():
-            logger.warning(f"Failed to edit reply markup for message {callback_query.message.message_id}: {e}. Message might be too old or not editable.")
+            logger.warning(
+                f"Failed to edit reply markup for message {callback_query.message.message_id}: {e}. Message might be"
+                " too old or not editable."
+            )
         else:
             logger.error(f"TelegramBadRequest when editing confirmation message markup: {e}")
     except Exception as e:
