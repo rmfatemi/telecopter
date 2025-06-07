@@ -9,7 +9,7 @@ class RequestMediaStates(StatesGroup):
     typing_user_note = State()
 
 
-class AdminAnnounceStates(StatesGroup):
+class AdminBroadcastStates(StatesGroup):
     choosing_type = State()
     typing_message = State()
 

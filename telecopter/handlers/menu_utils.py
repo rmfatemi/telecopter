@@ -12,7 +12,7 @@ from telecopter.constants import (
     TITLE_ADMIN_PANEL,
     BTN_VIEW_TASKS,
     BTN_MANAGE_PENDING_USERS,
-    BTN_SEND_ANNOUNCEMENT,
+    BTN_SEND_BROADCASTMENT,
     MSG_ACCESS_DENIED,
     MSG_NOT_AUTHORIZED_ALERT,
     AdminPanelCallback,
@@ -36,8 +36,8 @@ def get_admin_panel_keyboard() -> InlineKeyboardMarkup:
         callback_data=f"admin_panel:{AdminPanelCallback.MANAGE_USERS.value}",
     )
     builder.button(
-        text=BTN_SEND_ANNOUNCEMENT,
-        callback_data=f"admin_panel:{AdminPanelCallback.SEND_ANNOUNCEMENT.value}",
+        text=BTN_SEND_BROADCASTMENT,
+        callback_data=f"admin_panel:{AdminPanelCallback.SEND_BROADCASTMENT.value}",
     )
     builder.adjust(1)
     return builder.as_markup()

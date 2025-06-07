@@ -7,7 +7,7 @@ from telecopter.constants import AdminPanelCallback
 from telecopter.handlers.common_utils import IsAdminFilter
 from telecopter.handlers.admin_tasks import list_admin_tasks
 from telecopter.handlers.admin_users import list_pending_users
-from telecopter.handlers.admin_announce import ask_announcement_type
+from telecopter.handlers.admin_broadcast import ask_broadcast_type
 
 
 logger = setup_logger(__name__)
@@ -36,9 +36,9 @@ async def admin_panel_manage_users_cb(callback_query: CallbackQuery, bot: Bot, s
 
 
 @admin_panel_router.callback_query(
-    F.data == f"admin_panel:{AdminPanelCallback.SEND_ANNOUNCEMENT.value}", IsAdminFilter()
+    F.data == f"admin_panel:{AdminPanelCallback.SEND_BROADCASTMENT.value}", IsAdminFilter()
 )
-async def admin_panel_send_announcement_cb(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
+async def admin_panel_send_broadcast_cb(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
     await callback_query.answer()
     if callback_query.message:
-        await ask_announcement_type(callback_query.message, state, bot)
+        await ask_broadcast_type(callback_query.message, state, bot)

@@ -34,7 +34,7 @@ class AdminPanelCallback(Enum):
     PREFIX = "admin_panel"
     VIEW_TASKS = "view_tasks"
     MANAGE_USERS = "manage_users"
-    SEND_ANNOUNCEMENT = "send_announcement"
+    SEND_BROADCASTMENT = "send_broadcast"
 
 
 class AdminTasksCallback(Enum):
@@ -54,7 +54,7 @@ class AdminModerateAction(Enum):
     CLOSE_TASK = "close_task"
 
 
-class AdminAnnounceAction(Enum):
+class AdminBroadcastAction(Enum):
     UNMUTED = "unmuted"
     MUTED = "muted"
     CANCEL = "cancel_to_panel"
@@ -90,7 +90,7 @@ class RequestConfirmAction(Enum):
 class Icon(Enum):
     MOVIE = "🎬"
     TV_SHOW = "📺"
-    ANNOUNCEMENT = "📢"
+    BROADCASTMENT = "📢"
     MANUAL_REQUEST = "✍️"
     USER_APPROVAL = "👤"
     PROBLEM_REPORT = "⚠️"
@@ -101,9 +101,9 @@ TMDB_TV_URL_BASE = "https://www.themoviedb.org/tv/"
 IMDB_TITLE_URL_BASE = "https://www.imdb.com/title/"
 TMDB_MOVIE_URL_BASE = "https://www.themoviedb.org/movie/"
 
-BTN_ANNOUNCE_CANCEL = "❌ Cancel"
-BTN_ANNOUNCE_MUTED = "🤫 Muted"
-BTN_ANNOUNCE_UNMUTED = "🔊 Unmuted"
+BTN_BROADCAST_CANCEL = "❌ Cancel"
+BTN_BROADCAST_MUTED = "🤫 Muted"
+BTN_BROADCAST_UNMUTED = "🔊 Unmuted"
 BTN_APPROVE_USER = "✅ Approve"
 BTN_REJECT_USER = "❌ Reject"
 BTN_BACK_TO_ADMIN_PANEL = "⬅️ Back to Admin Panel"
@@ -127,7 +127,7 @@ BTN_PREVIOUS_PAGE = "⬅️ Previous"
 BTN_REPORT_PROBLEM = "⚠️ Report a Problem"
 BTN_REQUEST_ACCESS = "✅ Request Access"
 BTN_REQUEST_MEDIA = "🎬 Request Media"
-BTN_SEND_ANNOUNCEMENT = "📢 Send Announcement"
+BTN_SEND_BROADCASTMENT = "📢 Send Broadcast"
 BTN_VIEW_TASKS = "📋 View Tasks"
 BTN_MANAGE_PENDING_USERS = "👤 Manage Pending Users"
 
@@ -166,10 +166,10 @@ MSG_ADMIN_ACTION_TAKEN_SUFFIX = ": {action}"
 MSG_ADMIN_ACTION_UNKNOWN = "❗ Unknown action '{action_full_key}' for request ID {request_id}."
 MSG_ADMIN_ACTION_UNKNOWN_STATUS = "❗ Unknown new_status '{new_status}' or missing template for request ID {request_id}"
 MSG_ADMIN_ACTION_USER_NOT_FOUND = " (User chat_id not found)"
-MSG_ADMIN_ANNOUNCE_CANCELLED = "Announcement cancelled."
-MSG_ADMIN_ANNOUNCE_FAILURES_SUFFIX = " {failed_count} failures."
-MSG_ADMIN_ANNOUNCE_NO_USERS = "👥 No registered users found to send announcement to."
-MSG_ADMIN_ANNOUNCE_SENT_CONFIRM = "✅ Announcement sent to {sent_count} users."
+MSG_ADMIN_BROADCAST_CANCELLED = "Broadcast cancelled."
+MSG_ADMIN_BROADCAST_FAILURES_SUFFIX = " {failed_count} failures."
+MSG_ADMIN_BROADCAST_NO_USERS = "👥 No registered users found to send broadcast to."
+MSG_ADMIN_BROADCAST_SENT_CONFIRM = "✅ Broadcast sent to {sent_count} users."
 MSG_ADMIN_CONTEXT_ERROR_FOR_NOTE = "❗Error: Could not retrieve context for adding note. Please try the action again."
 MSG_ITEM_MESSAGE_DIVIDER = "---"
 MSG_ADMIN_MODERATE_UPDATE_FALLBACK = "Update for request ID {request_id}: {log_message} (Note: {admin_note})"
@@ -283,9 +283,9 @@ MSG_USER_UNKNOWN_STATUS_INFO = (
     "⚠️ An issue occurred with your account status. Please contact support or try /start again."
 )
 
-PROMPT_ADMIN_ANNOUNCE_TYPE = "📢 Choose announcement type:"
-PROMPT_ADMIN_ANNOUNCE_TYPING_MESSAGE = (
-    "✍️ Please type your {muted_status} announcement message below. You can cancel from the admin panel if you return"
+PROMPT_ADMIN_BROADCAST_TYPE = "📢 Choose broadcast type:"
+PROMPT_ADMIN_BROADCAST_TYPING_MESSAGE = (
+    "✍️ Please type your {muted_status} broadcast message below. You can cancel from the admin panel if you return"
     " via /start."
 )
 PROMPT_ADMIN_NOTE_FOR_REQUEST = (

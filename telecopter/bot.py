@@ -16,8 +16,8 @@ from telecopter.handlers.admin_users import admin_users_router
 from telecopter.handlers.media_search import media_search_router
 from telecopter.handlers.core_commands import core_commands_router
 from telecopter.handlers.problem_report import problem_report_router
-from telecopter.handlers.admin_announce import admin_announce_router
 from telecopter.handlers.admin_moderate import admin_moderate_router
+from telecopter.handlers.admin_broadcast import admin_broadcast_router
 from telecopter.handlers.request_history import request_history_router
 from telecopter.handlers.media_submission import media_submission_router
 from telecopter.handlers.handler_fallback import handler_fallback_router
@@ -71,7 +71,7 @@ async def main_async():
     dp.include_router(admin_tasks_router)
     dp.include_router(admin_users_router)
     dp.include_router(media_search_router)
-    dp.include_router(admin_announce_router)
+    dp.include_router(admin_broadcast_router)
     dp.include_router(admin_moderate_router)
     dp.include_router(problem_report_router)
     dp.include_router(request_history_router)
