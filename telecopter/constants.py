@@ -58,7 +58,7 @@ BTN_MY_REQUESTS = "📊 My Requests"
 BTN_NEXT_PAGE = "Next ➡️"
 BTN_PREVIOUS_PAGE = "⬅️ Previous"
 BTN_REPORT_PROBLEM = "⚠️ Report a Problem"
-BTN_REQUEST_ACCESS = "👍 Request Access"
+BTN_REQUEST_ACCESS = "✅ Request Access"
 BTN_REQUEST_MEDIA = "🎬 Request Media"
 BTN_SEND_ANNOUNCEMENT = "📢 Send Announcement"
 BTN_VIEW_TASKS = "📋 View Tasks"
@@ -233,7 +233,7 @@ PROMPT_MANUAL_REQUEST_DESCRIPTION = (
 PROMPT_MEDIA_NAME_TYPING = "✍️ Please type the name of the media you're looking for. You can cancel using the main menu."
 
 PROMPT_PROBLEM_DESCRIPTION = (
-    "📝 Please describe the problem you are experiencing below, or use the cancel button in the menu."
+    "📝 Please describe the problem you are experiencing below, or use the cancel button."
 )
 PROMPT_PROBLEM_DESCRIPTION_RETRY = "✍️ Please type your problem description, or use the cancel button in the menu."
 
