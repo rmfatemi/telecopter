@@ -9,18 +9,9 @@ from telecopter.database import initialize_database
 from telecopter.config import TELEGRAM_BOT_TOKEN, ADMIN_CHAT_IDS
 from telecopter.constants import CMD_START_DESCRIPTION, CMD_CANCEL_DESCRIPTION
 
-from telecopter.handlers.main_menu import main_menu_router
-from telecopter.handlers.admin_panel import admin_panel_router
-from telecopter.handlers.admin_tasks import admin_tasks_router
-from telecopter.handlers.admin_users import admin_users_router
-from telecopter.handlers.media_search import media_search_router
-from telecopter.handlers.core_commands import core_commands_router
-from telecopter.handlers.problem_report import problem_report_router
-from telecopter.handlers.admin_moderate import admin_moderate_router
-from telecopter.handlers.admin_broadcast import admin_broadcast_router
-from telecopter.handlers.request_history import request_history_router
-from telecopter.handlers.media_submission import media_submission_router
-from telecopter.handlers.handler_fallback import handler_fallback_router
+from telecopter.handlers.main_handlers import main_router
+from telecopter.handlers.admin_handlers import admin_router
+from telecopter.handlers.request_handlers import request_router
 
 
 logger = setup_logger(__name__)
@@ -64,19 +55,9 @@ async def main_async():
     bot = Bot(token=TELEGRAM_BOT_TOKEN, default=default_props)
 
     dp = Dispatcher(storage=storage)
-
-    dp.include_router(core_commands_router)
-    dp.include_router(main_menu_router)
-    dp.include_router(admin_panel_router)
-    dp.include_router(admin_tasks_router)
-    dp.include_router(admin_users_router)
-    dp.include_router(media_search_router)
-    dp.include_router(admin_broadcast_router)
-    dp.include_router(admin_moderate_router)
-    dp.include_router(problem_report_router)
-    dp.include_router(request_history_router)
-    dp.include_router(media_submission_router)
-    dp.include_router(handler_fallback_router)
+    dp.include_router(admin_router)
+    dp.include_router(request_router)
+    dp.include_router(main_router)
 
     await set_bot_commands(bot)
 

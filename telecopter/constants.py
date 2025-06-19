@@ -44,14 +44,14 @@ class AdminTasksCallback(Enum):
 
 
 class AdminModerateAction(Enum):
-    APPROVE = "approve"
-    APPROVE_WITH_NOTE = "approve_with_note"
-    DENY = "deny"
-    DENY_WITH_NOTE = "deny_with_note"
-    MARK_COMPLETED = "complete"
-    ACKNOWLEDGE = "acknowledge"
-    MARK_RESOLVED = "resolve"
-    CLOSE_TASK = "close_task"
+    APPROVE = "✅ approve"
+    APPROVE_WITH_NOTE = "✅ approve_with_note"
+    DENY = "❌ deny"
+    DENY_WITH_NOTE = "❌ deny_with_note"
+    MARK_COMPLETED = "✅ complete"
+    ACKNOWLEDGE = "🔍 acknowledge"
+    MARK_RESOLVED = "✔️ resolve"
+    CLOSE_TASK = "📌 close_task"
 
 
 class AdminBroadcastAction(Enum):
@@ -171,13 +171,13 @@ MSG_ADMIN_BROADCAST_FAILURES_SUFFIX = " {failed_count} failures."
 MSG_ADMIN_BROADCAST_NO_USERS = "👥 No registered users found to send broadcast to."
 MSG_ADMIN_BROADCAST_SENT_CONFIRM = "✅ Broadcast sent to {sent_count} users."
 MSG_ADMIN_CONTEXT_ERROR_FOR_NOTE = "❗Error: Could not retrieve context for adding note. Please try the action again."
-MSG_ITEM_MESSAGE_DIVIDER = "---"
+MSG_ITEM_MESSAGE_DIVIDER = "~~~~~"
 MSG_ADMIN_MODERATE_UPDATE_FALLBACK = "Update for request ID {request_id}: {log_message} (Note: {admin_note})"
 MSG_ADMIN_NOTE_LABEL = "Admin's note:"
 MSG_ADMIN_NOTIFY_NEW_USER = "🆕 New User Awaiting Approval"
 MSG_ADMIN_NOTIFY_USER_LABEL = "User: "
 MSG_ADMIN_NOTIFY_PLEA = "\n\nPlease review via the 'Manage Pending Users' panel or use quick actions below."
-MSG_ADMIN_ONLY_ACTION = "⛔ This action is admin-only."
+MSG_ADMIN_ONLY_ACTION = "⛔ This action is admin only."
 MSG_ADMIN_REQUEST_NOT_FOUND = "❗Error: Request ID {request_id} not found."
 MSG_ADMIN_TARGET_USER_NOT_FOUND_ALERT = "Target user not found."
 MSG_ADMIN_TASK_CLOSED_IN_VIEW = "Task ID {request_id} closed in this view."

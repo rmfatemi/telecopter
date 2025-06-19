@@ -139,26 +139,26 @@ def format_request_for_admin(request_data: Dict, user_info: Optional[Dict] = Non
         year_val = request_data.get("year")
         if year_val:
             message_items.append(Text(Bold("Year:"), " ", Text(str(year_val))))
-
+        links_parts = []
         tmdb_id_val = request_data.get("tmdb_id")
         if tmdb_id_val is not None and req_type in [MediaType.MOVIE.value, MediaType.TV.value]:
             tmdb_url = make_tmdb_url(tmdb_id_val, req_type)
             if tmdb_url:
-                message_items.append(Text(Bold("TMDB:"), " ", TextLink("Link", url=tmdb_url)))
+                links_parts.append(Text(Bold("TMDB:"), " ", TextLink("Link", url=tmdb_url)))
 
         imdb_id_val = request_data.get("imdb_id")
         if imdb_id_val:
             imdb_url = make_imdb_url(imdb_id_val)
             if imdb_url:
-                if message_items:
-                    message_items.append(Text(" | "))
-                message_items.append(TextLink("View on IMDB", url=imdb_url))
+                if links_parts:
+                    links_parts.append(Text(" | "))
+                links_parts.append(TextLink("View on IMDB", url=imdb_url))
+
+        if links_parts:
+            message_items.append(Text(*links_parts))
 
         if user_query_raw and user_query_raw != "N/A":
             message_items.append(Text(Bold("User Query:"), " ", Code(user_query_raw)))
-
-    if user_note_raw and user_note_raw != "N/A":
-        message_items.append(Text(Bold("User Note:"), " ", Italic(user_note_raw)))
 
     message_items.append(Text(Bold("Status:"), " ", Italic(req_status_raw)))
 
