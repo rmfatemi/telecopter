@@ -46,4 +46,4 @@ clean: ## clean docker containers, python cache, build artifacts and temporary f
 	rm -rf dist/ build/
 	@echo "cleaning log files..."
 	find . -name "*.log" -delete
-	@echo "Clean complete"
+	@echo "clean complete"
