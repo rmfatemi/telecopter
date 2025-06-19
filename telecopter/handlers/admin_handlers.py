@@ -495,7 +495,7 @@ def get_admin_request_action_keyboard(request_id: int) -> InlineKeyboardMarkup:
     )
     builder.button(
         text=BTN_MOD_MARK_COMPLETED,
-        callback_data=f"admin_act:{AdminModerateAction.MARK_COMPLETED.value}_with_note:{request_id}",
+        callback_data=f"admin_act:{AdminModerateAction.MARK_COMPLETED.value}:{request_id}",
     )
     builder.button(
         text=BTN_MOD_SHELVING_DECISION, callback_data=f"admin_act:{AdminModerateAction.CLOSE_TASK.value}:{request_id}"
@@ -510,7 +510,7 @@ def get_admin_report_action_keyboard(request_id: int) -> InlineKeyboardMarkup:
     )
     builder.button(
         text=BTN_MOD_MARK_RESOLVED,
-        callback_data=f"admin_act:{AdminModerateAction.MARK_RESOLVED.value}_with_note:{request_id}",
+        callback_data=f"admin_act:{AdminModerateAction.MARK_RESOLVED.value}:{request_id}",
     )
     builder.button(
         text=BTN_MOD_SHELVING_DECISION, callback_data=f"admin_act:{AdminModerateAction.CLOSE_TASK.value}:{request_id}"
@@ -628,10 +628,7 @@ async def admin_action_callback_handler(callback_query: CallbackQuery, state: FS
 
     base_action_key = action_full_key.replace("_with_note", "")
 
-    if "_with_note" in action_full_key or base_action_key in [
-        AdminModerateAction.MARK_COMPLETED.value,
-        AdminModerateAction.MARK_RESOLVED.value,
-    ]:
+    if "_with_note" in action_full_key:
         await state.set_state(AdminInteractionStates.typing_admin_note)
         await state.update_data(
             admin_request_id=request_id,
